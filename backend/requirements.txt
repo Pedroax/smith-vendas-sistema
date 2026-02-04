@@ -1,0 +1,43 @@
+# ===================================
+# SMITH 2.0 - CORE ESSENCIAL (SEM SUPABASE POR ENQUANTO)
+# ===================================
+
+# Web Framework
+fastapi>=0.115.0
+uvicorn[standard]>=0.34.0
+python-multipart>=0.0.9
+
+# IA/LLM
+openai>=1.50.0
+langchain>=0.3.0
+langchain-openai>=0.2.0
+langgraph>=0.2.50
+
+# HTTP Clients
+httpx>=0.28.0
+aiohttp>=3.9.0
+beautifulsoup4>=4.12.0
+
+# Validação
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+
+# Utilidades
+python-dotenv>=1.0.0
+loguru>=0.7.0
+pytz>=2024.0
+python-dateutil>=2.9.0
+
+# Segurança
+pyjwt>=2.8.0
+
+# Google Calendar
+google-api-python-client>=2.150.0
+google-auth-httplib2>=0.2.0
+google-auth-oauthlib>=1.2.0
+
+# Database
+supabase>=2.25.0
+
+# NOTA: Redis será instalado depois se necessário
+# redis>=5.2.0

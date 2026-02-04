@@ -1,6 +1,6 @@
-import withPWA from 'next-pwa';
+import withPWA from '@ducanh2912/next-pwa';
 
-const nextConfig = withPWA({
+const withPWAConfig = withPWA({
   dest: 'public',
   register: true,
   skipWaiting: true,
@@ -144,7 +144,9 @@ const nextConfig = withPWA({
       }
     }
   ]
-})({
+});
+
+const nextConfig = withPWAConfig({
   reactStrictMode: true,
   images: {
     domains: ['localhost', 'byseoksffurotygitfvy.supabase.co'],

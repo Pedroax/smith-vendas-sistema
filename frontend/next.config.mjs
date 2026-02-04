@@ -148,8 +148,18 @@ const withPWAConfig = withPWA({
 
 const nextConfig = withPWAConfig({
   reactStrictMode: true,
+  turbopack: {}, // Next.js 16 Turbopack support
   images: {
-    domains: ['localhost', 'byseoksffurotygitfvy.supabase.co'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'byseoksffurotygitfvy.supabase.co',
+      },
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+      },
+    ],
   },
   // Suporte para múltiplos domínios (admin e portal)
   async redirects() {

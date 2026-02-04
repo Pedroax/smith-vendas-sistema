@@ -38,6 +38,7 @@ google-auth-oauthlib>=1.2.0
 
 # Database
 supabase>=2.25.0
+sqlalchemy>=2.0.0
 
 # NOTA: Redis será instalado depois se necessário
 # redis>=5.2.0

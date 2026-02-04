@@ -104,7 +104,7 @@ class APIClient {
     if (filters?.offset) params.append('offset', filters.offset.toString());
 
     const query = params.toString();
-    const endpoint = `/api/leads${query ? `?${query}` : ''}`;
+    const endpoint = `/api/leads/${query ? `?${query}` : ''}`;
 
     return this.request<Lead[]>(endpoint);
   }
@@ -120,7 +120,7 @@ class APIClient {
    * Cria um novo lead
    */
   async createLead(data: CreateLeadData): Promise<{ success: boolean; lead: Lead; message: string }> {
-    return this.request(`/api/leads`, {
+    return this.request(`/api/leads/`, {
       method: 'POST',
       body: JSON.stringify(data),
     });

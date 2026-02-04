@@ -149,6 +149,25 @@ const nextConfig = withPWA({
   images: {
     domains: ['localhost', 'byseoksffurotygitfvy.supabase.co'],
   },
+  // Suporte para múltiplos domínios (admin e portal)
+  async redirects() {
+    return [
+      // Redirecionar admin.* para /admin-portal
+      {
+        source: '/',
+        has: [{ type: 'host', value: 'admin.(?<domain>.*?)' }],
+        destination: '/admin-portal',
+        permanent: false,
+      },
+      // Redirecionar portal.* para /portal
+      {
+        source: '/',
+        has: [{ type: 'host', value: 'portal.(?<domain>.*?)' }],
+        destination: '/portal',
+        permanent: false,
+      },
+    ];
+  },
 });
 
 export default nextConfig;

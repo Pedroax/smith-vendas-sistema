@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   FolderKanban, Search, Plus, Loader2, X, CheckCircle2,
-  Calendar, Users, ArrowRight
+  Calendar, Users, ArrowRight, Trash2
 } from 'lucide-react';
 
 import { adminFetch } from '@/lib/auth';
@@ -119,6 +119,22 @@ export default function AdminProjectsPage() {
       console.error(err);
     } finally {
       setCreating(false);
+    }
+  };
+
+  const deleteProject = async (projectId: string) => {
+    if (!confirm('Tem certeza que deseja deletar este projeto? Esta ação não pode ser desfeita.')) return;
+
+    try {
+      const res = await adminFetch(`${API_URL}/api/portal/admin/projects/${projectId}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        setProjects((prev) => prev.filter((p) => p.id !== projectId));
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao deletar projeto');
     }
   };
 
@@ -239,7 +255,20 @@ export default function AdminProjectsPage() {
                 <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(project.status)}`}>
                   {getStatusLabel(project.status)}
                 </span>
-                <ArrowRight className="w-5 h-5 text-gray-300 group-hover:text-purple-500 transition-colors" />
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      deleteProject(project.id);
+                    }}
+                    className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                    title="Deletar projeto"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                  <ArrowRight className="w-5 h-5 text-gray-300 group-hover:text-purple-500 transition-colors" />
+                </div>
               </div>
 
               <h3 className="font-semibold text-gray-900 group-hover:text-purple-600 transition-colors truncate">

@@ -291,6 +291,25 @@ class ClientPortalRepository:
             logger.error(f"Erro ao atualizar projeto: {e}")
             return None
 
+    async def delete_project(self, project_id: UUID) -> bool:
+        """Deletar projeto e todos os dados relacionados"""
+        try:
+            # Deletar em cascata: stages, deliveries, approvals, timeline, comments, payments
+            await self.supabase.table("client_project_stages").delete().eq("project_id", str(project_id)).execute()
+            await self.supabase.table("client_delivery_items").delete().eq("project_id", str(project_id)).execute()
+            await self.supabase.table("client_approval_items").delete().eq("project_id", str(project_id)).execute()
+            await self.supabase.table("client_timeline_events").delete().eq("project_id", str(project_id)).execute()
+            await self.supabase.table("client_comments").delete().eq("project_id", str(project_id)).execute()
+            await self.supabase.table("client_payments").delete().eq("project_id", str(project_id)).execute()
+
+            # Deletar o projeto
+            result = self.supabase.table("client_projects").delete().eq("id", str(project_id)).execute()
+
+            return result.data is not None and len(result.data) > 0
+        except Exception as e:
+            logger.error(f"Erro ao deletar projeto: {e}")
+            return False
+
     async def advance_project_stage(self, project_id: UUID) -> Optional[Project]:
         """Avançar etapa do projeto"""
         try:

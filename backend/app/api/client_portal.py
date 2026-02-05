@@ -372,6 +372,18 @@ async def update_project(project_id: UUID, data: ProjectUpdate, _admin=Depends(g
     return project
 
 
+@router.delete("/admin/projects/{project_id}")
+async def delete_project(project_id: UUID, _admin=Depends(get_current_admin)):
+    """Deletar projeto (admin)"""
+    repo = get_client_portal_repository()
+    success = await repo.delete_project(project_id)
+
+    if not success:
+        raise HTTPException(status_code=404, detail="Projeto não encontrado")
+
+    return {"message": "Projeto deletado com sucesso"}
+
+
 @router.post("/admin/projects/{project_id}/advance")
 async def advance_project_stage(project_id: UUID, _admin=Depends(get_current_admin)):
     """Avançar etapa do projeto (admin)"""

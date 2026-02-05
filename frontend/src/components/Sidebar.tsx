@@ -62,7 +62,7 @@ export function Sidebar() {
       </div>
 
       {/* Menu Principal */}
-      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {menuItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.href);

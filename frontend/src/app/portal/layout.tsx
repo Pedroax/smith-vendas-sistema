@@ -31,7 +31,7 @@ export default function PortalLayout({
 
   useEffect(() => {
     if (!isPublicPage) {
-      const token = localStorage.getItem('portal_token');
+      const token = localStorage.getItem('portal_access_token');
       const clientData = localStorage.getItem('portal_client');
 
       if (!token || !clientData) {
@@ -48,7 +48,8 @@ export default function PortalLayout({
   }, [pathname, router, isPublicPage]);
 
   const handleLogout = () => {
-    localStorage.removeItem('portal_token');
+    localStorage.removeItem('portal_access_token');
+    localStorage.removeItem('portal_refresh_token');
     localStorage.removeItem('portal_client');
     router.push('/portal/login');
   };

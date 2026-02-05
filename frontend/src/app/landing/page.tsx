@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Bot, Loader2 } from 'lucide-react';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 interface Message {
   role: 'user' | 'assistant';
   content: string;
@@ -96,7 +98,7 @@ export default function LandingPage() {
         setSessionPhone(phone);
 
         try {
-          const response = await fetch('http://localhost:8000/webhook/whatsapp', {
+          const response = await fetch(`${API_URL}/webhook/whatsapp`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -122,7 +124,7 @@ export default function LandingPage() {
 
           if (result.status === 'processed') {
             const leadResponse = await fetch(
-              `http://localhost:8000/api/leads/${result.lead_id}`
+              `${API_URL}/api/leads/${result.lead_id}`
             );
             const lead = await leadResponse.json();
 
@@ -168,7 +170,7 @@ export default function LandingPage() {
         setSessionPhone(phone);
       }
 
-      const response = await fetch('http://localhost:8000/webhook/whatsapp', {
+      const response = await fetch(`${API_URL}/webhook/whatsapp`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -194,7 +196,7 @@ export default function LandingPage() {
 
       if (result.status === 'processed') {
         const leadResponse = await fetch(
-          `http://localhost:8000/api/leads/${result.lead_id}`
+          `${API_URL}/api/leads/${result.lead_id}`
         );
         const lead = await leadResponse.json();
 

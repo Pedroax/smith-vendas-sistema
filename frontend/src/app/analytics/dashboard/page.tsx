@@ -6,6 +6,8 @@ import {
   AlertCircle, RefreshCw, Calendar, Zap, Activity, Filter
 } from 'lucide-react';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 interface DashboardMetrics {
   resumo: {
     total_leads: number;
@@ -45,8 +47,8 @@ export default function AnalyticsDashboard() {
         setIsLoading(true);
         setError(null);
 
-        console.log('Buscando métricas...', `http://localhost:8000/api/analytics/dashboard?periodo_dias=${periodo}`);
-        const response = await fetch(`http://localhost:8000/api/analytics/dashboard?periodo_dias=${periodo}`);
+        console.log('Buscando métricas...', `${API_URL}/api/analytics/dashboard?periodo_dias=${periodo}`);
+        const response = await fetch(`${API_URL}/api/analytics/dashboard?periodo_dias=${periodo}`);
 
         if (!response.ok) {
           throw new Error('Erro ao buscar métricas');

@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Loader2, RotateCcw } from 'lucide-react';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 interface Message {
   role: 'user' | 'assistant';
   content: string;
@@ -44,7 +46,7 @@ export default function AgentePage() {
       const sessionPhone = leadId || `5511${randomDigits}`;
 
       // Simular mensagem do WhatsApp via webhook
-      const response = await fetch('http://localhost:8000/webhook/whatsapp', {
+      const response = await fetch(`${API_URL}/webhook/whatsapp`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -70,7 +72,7 @@ export default function AgentePage() {
       if (result.status === 'processed') {
         // Buscar o lead atualizado para pegar a resposta da IA
         const leadResponse = await fetch(
-          `http://localhost:8000/api/leads/${result.lead_id}`
+          `${API_URL}/api/leads/${result.lead_id}`
         );
         const lead = await leadResponse.json();
 

@@ -15,6 +15,8 @@ import {
 } from '@dnd-kit/core';
 import { Plus, Calendar, DollarSign, User, AlertCircle } from 'lucide-react';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 // Types
 type ProjectStatus = 'backlog' | 'em_andamento' | 'concluido';
 type ProjectPriority = 'baixa' | 'media' | 'alta' | 'urgente';
@@ -228,7 +230,7 @@ export default function PipelinePage() {
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch('http://localhost:8000/api/projects/');
+      const response = await fetch(`${API_URL}/api/projects/`);
 
       if (!response.ok) {
         throw new Error('Erro ao buscar projetos');
@@ -283,7 +285,7 @@ export default function PipelinePage() {
 
     // Update backend
     try {
-      const response = await fetch(`http://localhost:8000/api/projects/${projectId}`, {
+      const response = await fetch(`${API_URL}/api/projects/${projectId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

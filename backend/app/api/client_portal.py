@@ -30,7 +30,7 @@ from app.repository.client_portal_repository import get_client_portal_repository
 from app.middleware.auth import (
     create_access_token as create_jwt_access_token,
     create_refresh_token as create_jwt_refresh_token,
-    verify_token,
+    verify_token as verify_admin_token,
     get_current_admin
 )
 from app.services.storage_service import get_storage_service
@@ -72,8 +72,8 @@ def create_access_token(client: Client) -> str:
     return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
 
 
-def verify_token(token: str) -> Optional[TokenData]:
-    """Verificar token JWT"""
+def verify_portal_token(token: str) -> Optional[TokenData]:
+    """Verificar token JWT do portal"""
     try:
         payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
         return TokenData(**payload)
@@ -88,7 +88,7 @@ async def get_current_client(credentials: HTTPAuthorizationCredentials = Depends
     if not credentials:
         raise HTTPException(status_code=401, detail="Token não fornecido")
 
-    token_data = verify_token(credentials.credentials)
+    token_data = verify_portal_token(credentials.credentials)
     if not token_data:
         raise HTTPException(status_code=401, detail="Token inválido ou expirado")
 

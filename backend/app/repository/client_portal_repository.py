@@ -296,14 +296,14 @@ class ClientPortalRepository:
         try:
             logger.info(f"🗑️ Iniciando deleção do projeto: {project_id}")
 
-            # Tentar deletar tabelas relacionadas (ignorar se não existirem)
+            # Deletar tabelas relacionadas (nomes corretos!)
             related_tables = [
-                "client_project_stages",
-                "client_delivery_items",
-                "client_approval_items",
-                "client_timeline_events",
-                "client_comments",
-                "client_payments"
+                "project_stages",
+                "delivery_items",
+                "approval_items",
+                "project_timeline",
+                "project_comments",
+                "project_payments"
             ]
 
             for table in related_tables:

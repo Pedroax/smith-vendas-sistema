@@ -421,53 +421,94 @@ class ProjectTimeline(BaseModel):
 # ============================================
 
 PROJECT_TEMPLATES = {
-    "site_institucional": {
-        "nome": "Site Institucional",
+    "agente_ia_whatsapp": {
+        "nome": "🤖 Agente de IA para WhatsApp",
         "etapas": [
-            {"nome": "Briefing", "descricao": "Entender necessidades e objetivos", "cor": "#8b5cf6"},
-            {"nome": "Wireframe", "descricao": "Estrutura e layout das páginas", "cor": "#6366f1"},
-            {"nome": "Design", "descricao": "Visual completo do site", "cor": "#3b82f6"},
-            {"nome": "Desenvolvimento", "descricao": "Programação do site", "cor": "#0ea5e9"},
-            {"nome": "Conteúdo", "descricao": "Inserção de textos e imagens", "cor": "#14b8a6"},
-            {"nome": "Testes", "descricao": "Verificação de funcionamento", "cor": "#22c55e"},
-            {"nome": "Entrega", "descricao": "Site no ar!", "cor": "#10b981"},
+            {"nome": "Briefing", "descricao": "Levantamento de requisitos e objetivos", "cor": "#8b5cf6"},
+            {"nome": "Treinamento IA", "descricao": "Criação da base de conhecimento", "cor": "#6366f1"},
+            {"nome": "Integração WhatsApp", "descricao": "Configuração e conexão", "cor": "#3b82f6"},
+            {"nome": "Testes", "descricao": "Simulação de conversas", "cor": "#0ea5e9"},
+            {"nome": "Homologação", "descricao": "Validação com cliente", "cor": "#22c55e"},
+            {"nome": "Produção", "descricao": "Agente no ar!", "cor": "#10b981"},
         ],
         "entregas": [
-            {"nome": "Logo em PNG (fundo transparente)", "obrigatorio": True},
-            {"nome": "Textos das páginas", "obrigatorio": True},
-            {"nome": "Fotos da empresa/equipe", "obrigatorio": False},
-            {"nome": "Dados de contato", "obrigatorio": True},
-            {"nome": "Acesso ao domínio", "obrigatorio": True},
-            {"nome": "Acesso à hospedagem", "obrigatorio": True},
+            {"nome": "FAQ e respostas padrão", "obrigatorio": True},
+            {"nome": "Fluxos de conversação", "obrigatorio": True},
+            {"nome": "Materiais de treinamento (PDFs, docs)", "obrigatorio": False},
+            {"nome": "Acesso à conta WhatsApp Business", "obrigatorio": True},
         ]
     },
-    "identidade_visual": {
-        "nome": "Identidade Visual",
+    "ia_analitica": {
+        "nome": "🧠 Sistema de IA Analítica",
         "etapas": [
-            {"nome": "Briefing", "descricao": "Entender a marca e público", "cor": "#8b5cf6"},
-            {"nome": "Pesquisa", "descricao": "Análise de mercado e referências", "cor": "#6366f1"},
-            {"nome": "Conceitos", "descricao": "Primeiras propostas de logo", "cor": "#3b82f6"},
-            {"nome": "Refinamento", "descricao": "Ajustes no conceito escolhido", "cor": "#0ea5e9"},
-            {"nome": "Aplicações", "descricao": "Papelaria, redes sociais, etc", "cor": "#14b8a6"},
-            {"nome": "Entrega", "descricao": "Manual de marca completo", "cor": "#10b981"},
+            {"nome": "Briefing", "descricao": "Definição de métricas e objetivos", "cor": "#8b5cf6"},
+            {"nome": "Coleta de Dados", "descricao": "Integração com fontes de dados", "cor": "#6366f1"},
+            {"nome": "Modelagem", "descricao": "Criação do modelo de IA", "cor": "#3b82f6"},
+            {"nome": "Treinamento", "descricao": "Treinar modelo com dados reais", "cor": "#0ea5e9"},
+            {"nome": "Deploy", "descricao": "Colocar modelo em produção", "cor": "#14b8a6"},
+            {"nome": "Monitoramento", "descricao": "Ajustes e otimizações", "cor": "#10b981"},
         ],
         "entregas": [
-            {"nome": "Referências visuais (marcas que gosta)", "obrigatorio": False},
-            {"nome": "Cores preferidas", "obrigatorio": False},
-            {"nome": "Descrição do público-alvo", "obrigatorio": True},
-            {"nome": "Valores da empresa", "obrigatorio": True},
+            {"nome": "Base de dados histórica", "obrigatorio": True},
+            {"nome": "Definição de KPIs", "obrigatorio": True},
+            {"nome": "Acessos a sistemas/APIs", "obrigatorio": False},
         ]
     },
-    "sistema_web": {
-        "nome": "Sistema Web",
+    "ia_rh": {
+        "nome": "👔 IA para Recursos Humanos",
+        "etapas": [
+            {"nome": "Briefing", "descricao": "Mapeamento de processos de RH", "cor": "#8b5cf6"},
+            {"nome": "Análise", "descricao": "Identificação de pontos de automação", "cor": "#6366f1"},
+            {"nome": "Desenvolvimento", "descricao": "Criação da solução de IA", "cor": "#3b82f6"},
+            {"nome": "Treinamento", "descricao": "Treinar com dados de RH", "cor": "#0ea5e9"},
+            {"nome": "Validação", "descricao": "Testes com equipe de RH", "cor": "#22c55e"},
+            {"nome": "Produção", "descricao": "Sistema em uso", "cor": "#10b981"},
+        ],
+        "entregas": [
+            {"nome": "Processos atuais de RH documentados", "obrigatorio": True},
+            {"nome": "Base de dados de candidatos/colaboradores", "obrigatorio": False},
+            {"nome": "Integrações necessárias (ATS, etc)", "obrigatorio": False},
+        ]
+    },
+    "automacao_rpa": {
+        "nome": "⚙️ Automação RPA",
+        "etapas": [
+            {"nome": "Mapeamento", "descricao": "Identificar processos repetitivos", "cor": "#8b5cf6"},
+            {"nome": "Desenvolvimento", "descricao": "Criar fluxos de automação", "cor": "#3b82f6"},
+            {"nome": "Testes", "descricao": "Validar automações", "cor": "#0ea5e9"},
+            {"nome": "Homologação", "descricao": "Aprovação do cliente", "cor": "#22c55e"},
+            {"nome": "Produção", "descricao": "Robôs em execução", "cor": "#10b981"},
+        ],
+        "entregas": [
+            {"nome": "Documentação do processo atual", "obrigatorio": True},
+            {"nome": "Acessos aos sistemas", "obrigatorio": True},
+            {"nome": "Credenciais necessárias", "obrigatorio": True},
+        ]
+    },
+    "aplicativo_mobile": {
+        "nome": "📱 Aplicativo Mobile",
+        "etapas": [
+            {"nome": "Briefing", "descricao": "Requisitos e funcionalidades", "cor": "#8b5cf6"},
+            {"nome": "Design", "descricao": "Interface e experiência do usuário", "cor": "#6366f1"},
+            {"nome": "Desenvolvimento", "descricao": "Programação do app", "cor": "#3b82f6"},
+            {"nome": "Testes", "descricao": "QA em dispositivos reais", "cor": "#0ea5e9"},
+            {"nome": "Deploy", "descricao": "Publicação nas lojas", "cor": "#10b981"},
+        ],
+        "entregas": [
+            {"nome": "Wireframes/mockups de referência", "obrigatorio": False},
+            {"nome": "Logo e identidade visual", "obrigatorio": True},
+            {"nome": "Textos e conteúdo", "obrigatorio": True},
+            {"nome": "Conta de desenvolvedor (Apple/Google)", "obrigatorio": True},
+        ]
+    },
+    "sistema_empresa": {
+        "nome": "💼 Sistema para Empresas",
         "etapas": [
             {"nome": "Briefing", "descricao": "Levantamento de requisitos", "cor": "#8b5cf6"},
-            {"nome": "Arquitetura", "descricao": "Definição técnica", "cor": "#6366f1"},
+            {"nome": "Arquitetura", "descricao": "Definição técnica e escopo", "cor": "#6366f1"},
             {"nome": "Protótipo", "descricao": "Wireframes e fluxos", "cor": "#3b82f6"},
-            {"nome": "Design UI", "descricao": "Interface visual", "cor": "#0ea5e9"},
-            {"nome": "Backend", "descricao": "Lógica e banco de dados", "cor": "#14b8a6"},
-            {"nome": "Frontend", "descricao": "Interface do usuário", "cor": "#22c55e"},
-            {"nome": "Integração", "descricao": "Conectar tudo", "cor": "#eab308"},
+            {"nome": "Desenvolvimento", "descricao": "Backend e Frontend", "cor": "#0ea5e9"},
+            {"nome": "Integração", "descricao": "Conectar com sistemas existentes", "cor": "#14b8a6"},
             {"nome": "Testes", "descricao": "QA e correções", "cor": "#f97316"},
             {"nome": "Deploy", "descricao": "Sistema no ar!", "cor": "#10b981"},
         ],
@@ -475,25 +516,25 @@ PROJECT_TEMPLATES = {
             {"nome": "Documento de requisitos", "obrigatorio": True},
             {"nome": "Fluxos de processo", "obrigatorio": True},
             {"nome": "Acessos a sistemas existentes", "obrigatorio": False},
-            {"nome": "Dados para importação", "obrigatorio": False},
+            {"nome": "Dados para migração/importação", "obrigatorio": False},
         ]
     },
-    "video_institucional": {
-        "nome": "Vídeo Institucional",
+    "projeto_ia_generico": {
+        "nome": "🎯 Projeto de IA (Genérico)",
         "etapas": [
-            {"nome": "Briefing", "descricao": "Objetivos e mensagem", "cor": "#8b5cf6"},
-            {"nome": "Roteiro", "descricao": "Texto e storyboard", "cor": "#6366f1"},
-            {"nome": "Pré-produção", "descricao": "Planejamento de gravação", "cor": "#3b82f6"},
-            {"nome": "Gravação", "descricao": "Captação de imagens", "cor": "#0ea5e9"},
-            {"nome": "Edição", "descricao": "Montagem e efeitos", "cor": "#14b8a6"},
-            {"nome": "Revisão", "descricao": "Ajustes finais", "cor": "#22c55e"},
-            {"nome": "Entrega", "descricao": "Vídeo finalizado", "cor": "#10b981"},
+            {"nome": "Briefing", "descricao": "Levantamento de requisitos", "cor": "#8b5cf6"},
+            {"nome": "Planejamento", "descricao": "Arquitetura e escopo técnico", "cor": "#6366f1"},
+            {"nome": "Desenvolvimento", "descricao": "Codificação e integração", "cor": "#3b82f6"},
+            {"nome": "Treinamento", "descricao": "Treinar IA com dados", "cor": "#0ea5e9"},
+            {"nome": "Testes", "descricao": "Validação e ajustes", "cor": "#14b8a6"},
+            {"nome": "Homologação", "descricao": "Aprovação do cliente", "cor": "#22c55e"},
+            {"nome": "Produção", "descricao": "Deploy e go-live", "cor": "#10b981"},
+            {"nome": "Monitoramento", "descricao": "Ajustes e otimização", "cor": "#f59e0b"},
         ],
         "entregas": [
-            {"nome": "Logo em alta resolução", "obrigatorio": True},
-            {"nome": "Materiais de apoio (fotos, vídeos)", "obrigatorio": False},
-            {"nome": "Texto para locução", "obrigatorio": False},
-            {"nome": "Músicas preferidas", "obrigatorio": False},
+            {"nome": "Especificações do projeto", "obrigatorio": True},
+            {"nome": "Dados de treinamento", "obrigatorio": False},
+            {"nome": "Acessos e credenciais", "obrigatorio": False},
         ]
     }
 }

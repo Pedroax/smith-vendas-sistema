@@ -142,26 +142,80 @@ export default function AdminProjectDetailPage() {
   }, [id]);
 
   const fetchAll = async () => {
-    try {
-      const [projRes, stagesRes, delivRes, approvRes, paymentsRes, commentsRes, timelineRes] = await Promise.all([
-        adminFetch(`${API_URL}/api/portal/admin/projects`).then((r) => r.json()).then((all: Project[]) => all.find((p) => p.id === id) || null),
-        adminFetch(`${API_URL}/api/portal/projects/${id}/stages`),
-        adminFetch(`${API_URL}/api/portal/projects/${id}/deliveries`),
-        adminFetch(`${API_URL}/api/portal/projects/${id}/approvals`),
-        adminFetch(`${API_URL}/api/portal/projects/${id}/payments`),
-        adminFetch(`${API_URL}/api/portal/projects/${id}/comments`),
-        adminFetch(`${API_URL}/api/portal/projects/${id}/timeline`),
-      ]);
+    console.log('📥 Carregando projeto:', id);
+    setLoading(true);
 
-      setProject(projRes);
-      if (stagesRes.ok) setStages(await stagesRes.json());
-      if (delivRes.ok) setDeliveries(await delivRes.json());
-      if (approvRes.ok) setApprovals(await approvRes.json());
-      if (paymentsRes.ok) setPayments(await paymentsRes.json());
-      if (commentsRes.ok) setComments(await commentsRes.json());
-      if (timelineRes.ok) setTimeline(await timelineRes.json());
+    try {
+      // Buscar projeto
+      console.log('  🔍 Buscando projeto...');
+      const allProjects = await adminFetch(`${API_URL}/api/portal/admin/projects`).then((r) => r.json());
+      const proj = allProjects.find((p: Project) => p.id === id);
+
+      if (!proj) {
+        console.error('❌ Projeto não encontrado:', id);
+        showToast('Projeto não encontrado', 'error');
+        router.push('/admin-portal/projetos');
+        return;
+      }
+
+      setProject(proj);
+      console.log('  ✅ Projeto carregado:', proj.nome);
+
+      // Buscar dados relacionados (não bloquear se falhar)
+      console.log('  📦 Buscando dados relacionados...');
+
+      try {
+        const stagesRes = await adminFetch(`${API_URL}/api/portal/projects/${id}/stages`);
+        if (stagesRes.ok) {
+          setStages(await stagesRes.json());
+          console.log('    ✅ Etapas carregadas');
+        }
+      } catch (err) { console.error('    ❌ Erro ao carregar etapas:', err); }
+
+      try {
+        const delivRes = await adminFetch(`${API_URL}/api/portal/projects/${id}/deliveries`);
+        if (delivRes.ok) {
+          setDeliveries(await delivRes.json());
+          console.log('    ✅ Entregas carregadas');
+        }
+      } catch (err) { console.error('    ❌ Erro ao carregar entregas:', err); }
+
+      try {
+        const approvRes = await adminFetch(`${API_URL}/api/portal/projects/${id}/approvals`);
+        if (approvRes.ok) {
+          setApprovals(await approvRes.json());
+          console.log('    ✅ Aprovações carregadas');
+        }
+      } catch (err) { console.error('    ❌ Erro ao carregar aprovações:', err); }
+
+      try {
+        const paymentsRes = await adminFetch(`${API_URL}/api/portal/projects/${id}/payments`);
+        if (paymentsRes.ok) {
+          setPayments(await paymentsRes.json());
+          console.log('    ✅ Pagamentos carregados');
+        }
+      } catch (err) { console.error('    ❌ Erro ao carregar pagamentos:', err); }
+
+      try {
+        const commentsRes = await adminFetch(`${API_URL}/api/portal/projects/${id}/comments`);
+        if (commentsRes.ok) {
+          setComments(await commentsRes.json());
+          console.log('    ✅ Comentários carregados');
+        }
+      } catch (err) { console.error('    ❌ Erro ao carregar comentários:', err); }
+
+      try {
+        const timelineRes = await adminFetch(`${API_URL}/api/portal/projects/${id}/timeline`);
+        if (timelineRes.ok) {
+          setTimeline(await timelineRes.json());
+          console.log('    ✅ Timeline carregada');
+        }
+      } catch (err) { console.error('    ❌ Erro ao carregar timeline:', err); }
+
+      console.log('✅ Carregamento concluído!');
     } catch (err) {
-      console.error(err);
+      console.error('❌ Erro geral ao carregar projeto:', err);
+      showToast('Erro ao carregar projeto', 'error');
     } finally {
       setLoading(false);
     }

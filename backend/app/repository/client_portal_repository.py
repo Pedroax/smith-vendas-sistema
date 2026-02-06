@@ -169,11 +169,16 @@ class ClientPortalRepository:
                 project = Project(**result.data[0])
 
                 # Criar etapas baseado no template ou customizado
+                logger.info(f"🎯 Template recebido: {template}")
+                logger.info(f"📋 Templates disponíveis: {list(PROJECT_TEMPLATES.keys())}")
+
                 etapas = []
                 if template and template in PROJECT_TEMPLATES:
                     etapas = PROJECT_TEMPLATES[template]["etapas"]
+                    logger.info(f"✅ Usando template '{template}' com {len(etapas)} etapas")
                 elif data.etapas:
                     etapas = [{"nome": e, "descricao": "", "cor": "#6366f1"} for e in data.etapas]
+                    logger.info(f"✅ Usando etapas customizadas: {len(etapas)} etapas")
                 else:
                     # Etapas padrão
                     etapas = [
@@ -182,15 +187,24 @@ class ClientPortalRepository:
                         {"nome": "Revisão", "descricao": "Ajustes e correções", "cor": "#f97316"},
                         {"nome": "Entrega", "descricao": "Projeto finalizado", "cor": "#10b981"},
                     ]
+                    logger.info(f"⚠️ Usando etapas padrão (sem template): {len(etapas)} etapas")
 
                 # Criar as etapas no banco
+                logger.info(f"📦 Criando {len(etapas)} etapas para o projeto...")
                 for i, etapa in enumerate(etapas):
-                    await self.create_stage(StageCreate(
-                        project_id=project.id,
-                        nome=etapa["nome"],
-                        descricao=etapa.get("descricao", ""),
-                        ordem=i
-                    ), cor=etapa.get("cor", "#6366f1"))
+                    try:
+                        stage = await self.create_stage(StageCreate(
+                            project_id=project.id,
+                            nome=etapa["nome"],
+                            descricao=etapa.get("descricao", ""),
+                            ordem=i
+                        ), cor=etapa.get("cor", "#6366f1"))
+                        if stage:
+                            logger.info(f"  ✅ Etapa {i+1}/{len(etapas)}: {etapa['nome']}")
+                        else:
+                            logger.error(f"  ❌ Falha ao criar etapa {i+1}: {etapa['nome']}")
+                    except Exception as e:
+                        logger.error(f"  ❌ Erro ao criar etapa {etapa['nome']}: {e}")
 
                 # Criar entregas se template
                 if template and template in PROJECT_TEMPLATES:

@@ -375,12 +375,26 @@ async def update_project(project_id: UUID, data: ProjectUpdate, _admin=Depends(g
 @router.delete("/admin/projects/{project_id}")
 async def delete_project(project_id: UUID, _admin=Depends(get_current_admin)):
     """Deletar projeto (admin)"""
-    repo = get_client_portal_repository()
-    success = await repo.delete_project(project_id)
+    logger.info(f"🗑️ Tentando deletar projeto: {project_id}")
 
-    if not success:
+    repo = get_client_portal_repository()
+
+    # Verificar se projeto existe primeiro
+    existing_project = await repo.get_project_by_id(project_id)
+    if not existing_project:
+        logger.warning(f"❌ Projeto {project_id} não encontrado no banco")
         raise HTTPException(status_code=404, detail="Projeto não encontrado")
 
+    logger.info(f"✅ Projeto encontrado: {existing_project.nome}")
+
+    success = await repo.delete_project(project_id)
+    logger.info(f"📊 Resultado da deleção: {success}")
+
+    if not success:
+        logger.error(f"❌ Falha ao deletar projeto {project_id}")
+        raise HTTPException(status_code=500, detail="Erro ao deletar projeto")
+
+    logger.info(f"✅ Projeto {project_id} deletado com sucesso")
     return {"message": "Projeto deletado com sucesso"}
 
 

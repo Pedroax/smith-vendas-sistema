@@ -294,21 +294,39 @@ class ClientPortalRepository:
     async def delete_project(self, project_id: UUID) -> bool:
         """Deletar projeto e todos os dados relacionados"""
         try:
+            logger.info(f"🗑️ Iniciando deleção em cascata para projeto: {project_id}")
+
             # Deletar em cascata: stages, deliveries, approvals, timeline, comments, payments
-            self.supabase.table("client_project_stages").delete().eq("project_id", str(project_id)).execute()
-            self.supabase.table("client_delivery_items").delete().eq("project_id", str(project_id)).execute()
-            self.supabase.table("client_approval_items").delete().eq("project_id", str(project_id)).execute()
-            self.supabase.table("client_timeline_events").delete().eq("project_id", str(project_id)).execute()
-            self.supabase.table("client_comments").delete().eq("project_id", str(project_id)).execute()
-            self.supabase.table("client_payments").delete().eq("project_id", str(project_id)).execute()
+            stages = self.supabase.table("client_project_stages").delete().eq("project_id", str(project_id)).execute()
+            logger.info(f"  📦 Stages deletadas: {len(stages.data) if stages.data else 0}")
+
+            deliveries = self.supabase.table("client_delivery_items").delete().eq("project_id", str(project_id)).execute()
+            logger.info(f"  📦 Deliveries deletadas: {len(deliveries.data) if deliveries.data else 0}")
+
+            approvals = self.supabase.table("client_approval_items").delete().eq("project_id", str(project_id)).execute()
+            logger.info(f"  📦 Approvals deletadas: {len(approvals.data) if approvals.data else 0}")
+
+            timeline = self.supabase.table("client_timeline_events").delete().eq("project_id", str(project_id)).execute()
+            logger.info(f"  📦 Timeline events deletados: {len(timeline.data) if timeline.data else 0}")
+
+            comments = self.supabase.table("client_comments").delete().eq("project_id", str(project_id)).execute()
+            logger.info(f"  📦 Comments deletados: {len(comments.data) if comments.data else 0}")
+
+            payments = self.supabase.table("client_payments").delete().eq("project_id", str(project_id)).execute()
+            logger.info(f"  📦 Payments deletados: {len(payments.data) if payments.data else 0}")
 
             # Deletar o projeto - Supabase delete precisa do .select() para retornar dados
+            logger.info(f"  🎯 Deletando projeto principal: {project_id}")
             result = self.supabase.table("client_projects").delete().eq("id", str(project_id)).select().execute()
+
+            logger.info(f"  ✅ Projeto deletado. Resultado: {result.data}")
 
             # Se não deu exception, deletou com sucesso
             return True
         except Exception as e:
-            logger.error(f"Erro ao deletar projeto: {e}")
+            logger.error(f"❌ Erro ao deletar projeto {project_id}: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             return False
 
     async def advance_project_stage(self, project_id: UUID) -> Optional[Project]:

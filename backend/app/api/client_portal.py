@@ -72,14 +72,16 @@ def create_access_token(client: Client) -> str:
     return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
 
 
-def verify_portal_token(token: str) -> Optional[TokenData]:
+def verify_portal_token(token: str) -> Optional[dict]:
     """Verificar token JWT do portal"""
     try:
         payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
-        return TokenData(**payload)
+        return payload
     except jwt.ExpiredSignatureError:
+        logger.warning("Token expirado")
         return None
     except jwt.InvalidTokenError:
+        logger.warning("Token inválido")
         return None
 
 
@@ -88,12 +90,17 @@ async def get_current_client(credentials: HTTPAuthorizationCredentials = Depends
     if not credentials:
         raise HTTPException(status_code=401, detail="Token não fornecido")
 
-    token_data = verify_portal_token(credentials.credentials)
-    if not token_data:
+    payload = verify_portal_token(credentials.credentials)
+    if not payload:
         raise HTTPException(status_code=401, detail="Token inválido ou expirado")
 
+    # O token tem apenas 'sub' (client_id)
+    client_id = payload.get("sub")
+    if not client_id:
+        raise HTTPException(status_code=401, detail="Token malformado")
+
     repo = get_client_portal_repository()
-    client = await repo.get_client_by_id(UUID(token_data.client_id))
+    client = await repo.get_client_by_id(UUID(client_id))
 
     if not client:
         raise HTTPException(status_code=404, detail="Cliente não encontrado")

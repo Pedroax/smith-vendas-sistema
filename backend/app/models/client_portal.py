@@ -172,6 +172,7 @@ class StageBase(BaseModel):
     nome: str = Field(..., min_length=2, max_length=100)
     descricao: Optional[str] = None
     ordem: int = Field(..., ge=0)
+    cor: str = "#6366f1"  # Cor da etapa (hex)
 
 
 class StageCreate(StageBase):

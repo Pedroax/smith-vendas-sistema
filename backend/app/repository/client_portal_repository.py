@@ -197,8 +197,9 @@ class ClientPortalRepository:
                             project_id=project.id,
                             nome=etapa["nome"],
                             descricao=etapa.get("descricao", ""),
-                            ordem=i
-                        ), cor=etapa.get("cor", "#6366f1"))
+                            ordem=i,
+                            cor=etapa.get("cor", "#6366f1")
+                        ))
                         if stage:
                             logger.info(f"  ✅ Etapa {i+1}/{len(etapas)}: {etapa['nome']}")
                         else:
@@ -394,7 +395,7 @@ class ClientPortalRepository:
     # ETAPAS
     # ============================================
 
-    async def create_stage(self, data: StageCreate, cor: str = "#6366f1") -> Optional[Stage]:
+    async def create_stage(self, data: StageCreate) -> Optional[Stage]:
         """Criar etapa"""
         try:
             stage_data = {
@@ -403,7 +404,7 @@ class ClientPortalRepository:
                 "nome": data.nome,
                 "descricao": data.descricao,
                 "ordem": data.ordem,
-                "cor": cor,
+                "cor": data.cor,
                 "concluida": False,
                 "created_at": datetime.utcnow().isoformat()
             }

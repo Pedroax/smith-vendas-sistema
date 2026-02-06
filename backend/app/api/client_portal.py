@@ -821,16 +821,17 @@ async def get_admin_stats(_admin=Depends(get_current_admin)):
 @router.get("/templates")
 async def list_project_templates():
     """Listar templates de projeto disponíveis"""
-    return [
+    templates = [
         {
             "id": key,
             "nome": value["nome"],
             "descricao": value.get("descricao", ""),
-            "etapas": value["etapas"],
-            "entregas": value.get("entregas", [])
+            "etapas": len(value["etapas"]),
+            "entregas": len(value.get("entregas", []))
         }
         for key, value in PROJECT_TEMPLATES.items()
     ]
+    return {"templates": templates}
 
 
 @router.get("/templates/{template_id}")

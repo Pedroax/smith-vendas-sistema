@@ -35,7 +35,7 @@ export default function ConfiguracoesPag() {
 
   const fetchClient = async () => {
     try {
-      const token = localStorage.getItem('portal_token');
+      const token = localStorage.getItem('portal_access_token');
       const res = await fetch(`${API_URL}/api/portal/auth/me`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
@@ -65,7 +65,7 @@ export default function ConfiguracoesPag() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const token = localStorage.getItem('portal_token');
+      const token = localStorage.getItem('portal_access_token');
       const res = await fetch(`${API_URL}/api/portal/auth/me`, {
         method: 'PUT',
         headers: {

@@ -41,7 +41,7 @@ export default function TimelinePage() {
 
   const fetchProjects = async () => {
     try {
-      const token = localStorage.getItem('portal_token');
+      const token = localStorage.getItem('portal_access_token');
       const res = await fetch(`${API_URL}/api/portal/projects`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
@@ -61,7 +61,7 @@ export default function TimelinePage() {
 
   const fetchEvents = async (projectId: string) => {
     try {
-      const token = localStorage.getItem('portal_token');
+      const token = localStorage.getItem('portal_access_token');
       const res = await fetch(`${API_URL}/api/portal/projects/${projectId}/timeline`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });

@@ -41,7 +41,7 @@ export default function EntregasPage() {
 
   const fetchData = async () => {
     try {
-      const token = localStorage.getItem('portal_token');
+      const token = localStorage.getItem('portal_access_token');
       const headers = { 'Authorization': `Bearer ${token}` };
 
       const projectsRes = await fetch(`${API_URL}/api/portal/projects`, { headers });
@@ -76,7 +76,7 @@ export default function EntregasPage() {
   const markAsDelivered = async (itemId: string) => {
     setUpdating(itemId);
     try {
-      const token = localStorage.getItem('portal_token');
+      const token = localStorage.getItem('portal_access_token');
       const res = await fetch(`${API_URL}/api/portal/deliveries/${itemId}`, {
         method: 'PUT',
         headers: {

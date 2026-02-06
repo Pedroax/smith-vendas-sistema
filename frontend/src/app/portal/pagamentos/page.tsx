@@ -40,7 +40,7 @@ export default function PagamentosPage() {
 
   const fetchData = async () => {
     try {
-      const token = localStorage.getItem('portal_token');
+      const token = localStorage.getItem('portal_access_token');
       const headers = { 'Authorization': `Bearer ${token}` };
 
       const projectsRes = await fetch(`${API_URL}/api/portal/projects`, { headers });

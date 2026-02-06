@@ -43,7 +43,7 @@ export default function AprovacoesPag() {
 
   const fetchData = async () => {
     try {
-      const token = localStorage.getItem('portal_token');
+      const token = localStorage.getItem('portal_access_token');
       const headers = { 'Authorization': `Bearer ${token}` };
 
       const projectsRes = await fetch(`${API_URL}/api/portal/projects`, { headers });
@@ -76,7 +76,7 @@ export default function AprovacoesPag() {
   const respondApproval = async (itemId: string, status: 'aprovado' | 'ajustes_solicitados') => {
     setUpdating(itemId);
     try {
-      const token = localStorage.getItem('portal_token');
+      const token = localStorage.getItem('portal_access_token');
       const res = await fetch(`${API_URL}/api/portal/approvals/${itemId}/respond`, {
         method: 'PUT',
         headers: {

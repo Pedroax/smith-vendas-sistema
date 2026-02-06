@@ -34,7 +34,7 @@ export default function ProjectsListPage() {
 
   const fetchProjects = async () => {
     try {
-      const token = localStorage.getItem('portal_token');
+      const token = localStorage.getItem('portal_access_token');
       const url = statusFilter
         ? `${API_URL}/api/portal/projects?status=${statusFilter}`
         : `${API_URL}/api/portal/projects`;

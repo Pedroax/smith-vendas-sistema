@@ -295,17 +295,18 @@ class ClientPortalRepository:
         """Deletar projeto e todos os dados relacionados"""
         try:
             # Deletar em cascata: stages, deliveries, approvals, timeline, comments, payments
-            await self.supabase.table("client_project_stages").delete().eq("project_id", str(project_id)).execute()
-            await self.supabase.table("client_delivery_items").delete().eq("project_id", str(project_id)).execute()
-            await self.supabase.table("client_approval_items").delete().eq("project_id", str(project_id)).execute()
-            await self.supabase.table("client_timeline_events").delete().eq("project_id", str(project_id)).execute()
-            await self.supabase.table("client_comments").delete().eq("project_id", str(project_id)).execute()
-            await self.supabase.table("client_payments").delete().eq("project_id", str(project_id)).execute()
+            self.supabase.table("client_project_stages").delete().eq("project_id", str(project_id)).execute()
+            self.supabase.table("client_delivery_items").delete().eq("project_id", str(project_id)).execute()
+            self.supabase.table("client_approval_items").delete().eq("project_id", str(project_id)).execute()
+            self.supabase.table("client_timeline_events").delete().eq("project_id", str(project_id)).execute()
+            self.supabase.table("client_comments").delete().eq("project_id", str(project_id)).execute()
+            self.supabase.table("client_payments").delete().eq("project_id", str(project_id)).execute()
 
-            # Deletar o projeto
-            result = self.supabase.table("client_projects").delete().eq("id", str(project_id)).execute()
+            # Deletar o projeto - Supabase delete precisa do .select() para retornar dados
+            result = self.supabase.table("client_projects").delete().eq("id", str(project_id)).select().execute()
 
-            return result.data is not None and len(result.data) > 0
+            # Se não deu exception, deletou com sucesso
+            return True
         except Exception as e:
             logger.error(f"Erro ao deletar projeto: {e}")
             return False

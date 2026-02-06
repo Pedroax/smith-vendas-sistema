@@ -125,16 +125,33 @@ export default function AdminProjectsPage() {
   const deleteProject = async (projectId: string) => {
     if (!confirm('Tem certeza que deseja deletar este projeto? Esta ação não pode ser desfeita.')) return;
 
+    console.log('🗑️ Deletando projeto:', projectId);
+    console.log('🔑 Token admin:', localStorage.getItem('smith_access_token') ? 'EXISTE ✅' : 'NÃO EXISTE ❌');
+
     try {
-      const res = await adminFetch(`${API_URL}/api/portal/admin/projects/${projectId}`, {
+      const url = `${API_URL}/api/portal/admin/projects/${projectId}`;
+      console.log('📍 URL:', url);
+
+      const res = await adminFetch(url, {
         method: 'DELETE',
       });
+
+      console.log('📊 Status:', res.status, res.statusText);
+      console.log('📊 OK?:', res.ok);
+
       if (res.ok) {
+        const data = await res.json();
+        console.log('✅ Sucesso:', data);
         setProjects((prev) => prev.filter((p) => p.id !== projectId));
+        alert('Projeto deletado com sucesso!');
+      } else {
+        const error = await res.json().catch(() => ({ detail: 'Erro desconhecido' }));
+        console.error('❌ Erro:', error);
+        alert(`Erro ao deletar: ${error.detail || res.statusText}`);
       }
     } catch (err) {
-      console.error(err);
-      alert('Erro ao deletar projeto');
+      console.error('❌ EXCEPTION:', err);
+      alert('Erro ao deletar projeto: ' + (err instanceof Error ? err.message : 'Erro desconhecido'));
     }
   };
 

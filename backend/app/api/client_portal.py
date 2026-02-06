@@ -279,8 +279,14 @@ async def list_my_projects(
     client: Client = Depends(get_current_client)
 ):
     """Listar projetos do cliente logado"""
+    logger.info(f"📋 Cliente {client.nome} (ID: {client.id}) buscando projetos")
     repo = get_client_portal_repository()
-    return await repo.list_client_projects(client.id, status=status)
+    projects = await repo.list_client_projects(client.id, status=status)
+    logger.info(f"📊 Encontrados {len(projects)} projetos para o cliente")
+    if projects:
+        for p in projects:
+            logger.info(f"  - {p.nome} (ID: {p.id})")
+    return projects
 
 
 @router.get("/projects/{project_id}", response_model=ProjectWithDetails)

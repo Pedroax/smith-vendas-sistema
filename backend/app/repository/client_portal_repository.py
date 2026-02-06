@@ -243,15 +243,22 @@ class ClientPortalRepository:
     async def list_client_projects(self, client_id: UUID, status: str = None) -> List[Project]:
         """Listar projetos de um cliente"""
         try:
+            logger.info(f"🔍 Buscando projetos para client_id: {client_id}")
             query = self.supabase.table("client_projects").select("*").eq("client_id", str(client_id))
 
             if status:
                 query = query.eq("status", status)
 
             result = query.order("created_at", desc=True).execute()
+            logger.info(f"📦 Supabase retornou {len(result.data) if result.data else 0} projetos")
+            if result.data:
+                for p in result.data:
+                    logger.info(f"  - Projeto: {p.get('nome')} | client_id: {p.get('client_id')}")
             return [Project(**p) for p in result.data] if result.data else []
         except Exception as e:
             logger.error(f"Erro ao listar projetos: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             return []
 
     async def list_all_projects(self, status: str = None) -> List[Project]:

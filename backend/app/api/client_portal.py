@@ -99,8 +99,14 @@ async def get_current_client(credentials: HTTPAuthorizationCredentials = Depends
     if not client_id:
         raise HTTPException(status_code=401, detail="Token malformado")
 
+    # Verificar se é um UUID válido (não é token de admin)
+    try:
+        client_uuid = UUID(client_id)
+    except ValueError:
+        raise HTTPException(status_code=403, detail="Token de admin não permitido neste endpoint")
+
     repo = get_client_portal_repository()
-    client = await repo.get_client_by_id(UUID(client_id))
+    client = await repo.get_client_by_id(client_uuid)
 
     if not client:
         raise HTTPException(status_code=404, detail="Cliente não encontrado")

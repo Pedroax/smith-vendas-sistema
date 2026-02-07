@@ -4,6 +4,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ClientProviders } from "@/components/ClientProviders";
 import { LayoutWrapper } from "@/components/LayoutWrapper";
+import { ClientInit } from "./_client-init";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -58,6 +59,7 @@ export default function RootLayout({
         <link rel="shortcut icon" href="/icons/icon-192x192.png" />
       </head>
       <body className={inter.className}>
+        <ClientInit />
         <ClientProviders>
           <LayoutWrapper>
             {children}

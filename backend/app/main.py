@@ -147,7 +147,7 @@ async def health_check():
 # ROTAS DA API
 # ========================================
 
-from app.api import leads, webhook, analytics, projects, webhook_facebook, test_qualification, webhook_evolution, client_portal, interactions, appointments, notifications, search, tasks, admin_auth
+from app.api import leads, webhook, analytics, projects, webhook_facebook, test_qualification, webhook_evolution, client_portal, interactions, appointments, notifications, search, tasks, admin_auth, invoices
 
 # Incluir routers
 app.include_router(leads.router, prefix="/api/leads", tags=["Leads"])
@@ -164,6 +164,7 @@ app.include_router(notifications.router, tags=["Notifications"])
 app.include_router(search.router, tags=["Search"])
 app.include_router(tasks.router, tags=["Tasks"])
 app.include_router(admin_auth.router, tags=["Admin Auth"])
+app.include_router(invoices.router, tags=["Invoices"])
 
 # Teste direto
 @app.get("/api/test-analytics")

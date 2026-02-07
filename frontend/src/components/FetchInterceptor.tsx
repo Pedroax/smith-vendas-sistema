@@ -12,22 +12,32 @@ export function FetchInterceptor() {
 
     window.fetch = function(input: RequestInfo | URL, init?: RequestInit) {
       let modifiedInput = input;
+      let urlString = '';
 
-      // Se for string, verificar e corrigir
+      // Se for string
       if (typeof input === 'string') {
+        urlString = input;
+        console.log('🌐 [INTERCEPTOR] Fetch detectado (string):', urlString);
+
         // Se tiver railway.app e for HTTP, trocar para HTTPS
-        if (input.includes('railway.app') && input.startsWith('http://')) {
-          modifiedInput = input.replace('http://', 'https://');
-          console.log('🔒 [INTERCEPTOR] Corrigido HTTP → HTTPS:', modifiedInput);
+        if (urlString.includes('railway.app') && urlString.startsWith('http://')) {
+          modifiedInput = urlString.replace('http://', 'https://');
+          console.log('🔒 [INTERCEPTOR] ✅ CORRIGIDO HTTP → HTTPS:', modifiedInput);
+        } else if (urlString.includes('railway.app')) {
+          console.log('✅ [INTERCEPTOR] Já está HTTPS:', urlString);
         }
       }
       // Se for Request object
       else if (input instanceof Request) {
-        const originalUrl = input.url;
-        if (originalUrl.includes('railway.app') && originalUrl.startsWith('http://')) {
-          const newUrl = originalUrl.replace('http://', 'https://');
+        urlString = input.url;
+        console.log('🌐 [INTERCEPTOR] Fetch detectado (Request):', urlString);
+
+        if (urlString.includes('railway.app') && urlString.startsWith('http://')) {
+          const newUrl = urlString.replace('http://', 'https://');
           modifiedInput = new Request(newUrl, input);
-          console.log('🔒 [INTERCEPTOR] Corrigido HTTP → HTTPS:', newUrl);
+          console.log('🔒 [INTERCEPTOR] ✅ CORRIGIDO HTTP → HTTPS:', newUrl);
+        } else if (urlString.includes('railway.app')) {
+          console.log('✅ [INTERCEPTOR] Já está HTTPS:', urlString);
         }
       }
 

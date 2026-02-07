@@ -13,11 +13,19 @@ const isLocalhost = typeof window !== 'undefined'
   : false;
 
 // Exportar URL - SEMPRE HTTPS exceto localhost
-export const API_URL = isLocalhost ? API_URL_DEV : API_URL_PRODUCTION;
+const computedUrl = isLocalhost ? API_URL_DEV : API_URL_PRODUCTION;
 
-// Debug
+// GARANTIR que é HTTPS em produção
+export const API_URL = computedUrl.startsWith('http://') && !isLocalhost
+  ? computedUrl.replace('http://', 'https://')
+  : computedUrl;
+
+// Debug detalhado
 if (typeof window !== 'undefined') {
-  console.log('🔧 API_URL:', API_URL);
+  console.log('🔧 API_URL (FINAL):', API_URL);
+  console.log('🔧 computedUrl:', computedUrl);
+  console.log('🔧 API_URL_PRODUCTION:', API_URL_PRODUCTION);
   console.log('🌍 Hostname:', window.location.hostname);
   console.log('📍 isLocalhost:', isLocalhost);
+  console.log('🔒 Starts with HTTPS?', API_URL.startsWith('https://'));
 }

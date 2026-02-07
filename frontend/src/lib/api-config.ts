@@ -3,6 +3,13 @@
  * HARDCODED HTTPS com interceptor integrado
  */
 
+// Declaração de tipo para a flag do interceptor
+declare global {
+  interface Window {
+    __FETCH_INTERCEPTOR_INSTALLED__?: boolean;
+  }
+}
+
 // INTERCEPTOR DE FETCH - RODA ASSIM QUE O ARQUIVO É IMPORTADO
 if (typeof window !== 'undefined' && !window.__FETCH_INTERCEPTOR_INSTALLED__) {
   const originalFetch = window.fetch;
@@ -38,7 +45,7 @@ if (typeof window !== 'undefined' && !window.__FETCH_INTERCEPTOR_INSTALLED__) {
     return originalFetch.call(this, modifiedInput, init);
   };
 
-  (window as any).__FETCH_INTERCEPTOR_INSTALLED__ = true;
+  window.__FETCH_INTERCEPTOR_INSTALLED__ = true;
   console.log('✅ [API-CONFIG] Fetch interceptor instalado');
 }
 

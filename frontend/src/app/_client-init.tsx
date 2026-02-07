@@ -2,6 +2,13 @@
 
 import { useEffect } from 'react';
 
+// Declaração de tipo para a flag do interceptor
+declare global {
+  interface Window {
+    __FETCH_INTERCEPTOR_INSTALLED__?: boolean;
+  }
+}
+
 /**
  * Componente que FORÇA a instalação do fetch interceptor
  * DEVE ser usado no layout principal
@@ -11,7 +18,7 @@ export function ClientInit() {
     if (typeof window === 'undefined') return;
 
     // Verificar se já foi instalado
-    if ((window as any).__FETCH_INTERCEPTOR_INSTALLED__) {
+    if (window.__FETCH_INTERCEPTOR_INSTALLED__) {
       console.log('⚠️ Interceptor já instalado');
       return;
     }
@@ -55,7 +62,7 @@ export function ClientInit() {
       return originalFetch.call(this, modifiedInput, init);
     };
 
-    (window as any).__FETCH_INTERCEPTOR_INSTALLED__ = true;
+    window.__FETCH_INTERCEPTOR_INSTALLED__ = true;
     console.log('✅ [CLIENT-INIT] Fetch interceptor instalado com sucesso!');
   }, []); // Executa UMA VEZ ao montar
 

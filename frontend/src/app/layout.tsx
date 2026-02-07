@@ -42,6 +42,37 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                if (typeof window === 'undefined') return;
+
+                const originalFetch = window.fetch;
+
+                window.fetch = function(input, init) {
+                  let modifiedInput = input;
+                  let urlString = typeof input === 'string' ? input : (input instanceof Request ? input.url : input.href);
+
+                  console.log('🚨 [INLINE-SCRIPT] Interceptou:', urlString);
+
+                  if (typeof input === 'string' && input.includes('railway.app') && input.startsWith('http://')) {
+                    modifiedInput = input.replace('http://', 'https://');
+                    console.log('🔒 [INLINE-SCRIPT] CORRIGIDO:', modifiedInput);
+                  } else if (input instanceof Request && input.url.includes('railway.app') && input.url.startsWith('http://')) {
+                    const newUrl = input.url.replace('http://', 'https://');
+                    modifiedInput = new Request(newUrl, input);
+                    console.log('🔒 [INLINE-SCRIPT] CORRIGIDO:', newUrl);
+                  }
+
+                  return originalFetch.call(this, modifiedInput, init);
+                };
+
+                console.log('✅ [INLINE-SCRIPT] Interceptor instalado ANTES de tudo!');
+              })();
+            `,
+          }}
+        />
         <meta name="application-name" content="Smith 2.0" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />

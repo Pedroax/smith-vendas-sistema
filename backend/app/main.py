@@ -73,6 +73,19 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
+# Middleware para confiar em proxy headers (Railway, Heroku, etc)
+# CRITICAL: Deve vir ANTES do CORS para funcionar corretamente
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
+
+# Em produção, forçar HTTPS e confiar nos headers do proxy
+if not settings.debug:
+    # Confiar nos headers X-Forwarded-Proto, X-Forwarded-For do Railway
+    app.add_middleware(
+        TrustedHostMiddleware,
+        allowed_hosts=["*"]  # Railway gerencia isso
+    )
+
 # Configurar CORS
 app.add_middleware(
     CORSMiddleware,
@@ -81,6 +94,28 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Middleware personalizado para garantir que redirects usem HTTPS em produção
+@app.middleware("http")
+async def force_https_redirects(request: Request, call_next):
+    """
+    Força redirects a usarem HTTPS quando X-Forwarded-Proto é https
+    Resolve problema de Mixed Content no Railway/Vercel
+    """
+    response = await call_next(request)
+
+    # Se é um redirect E a requisição original era HTTPS
+    if (
+        response.status_code in [301, 302, 303, 307, 308] and
+        request.headers.get("x-forwarded-proto") == "https"
+    ):
+        location = response.headers.get("location", "")
+        # Se o redirect for para HTTP, trocar para HTTPS
+        if location.startswith("http://"):
+            response.headers["location"] = location.replace("http://", "https://", 1)
+            logger.info(f"🔒 Redirect corrigido: {location} → {response.headers['location']}")
+
+    return response
 
 
 # ========================================

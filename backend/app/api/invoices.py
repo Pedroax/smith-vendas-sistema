@@ -42,7 +42,7 @@ async def create_invoice(data: InvoiceCreate):
 
 @router.get("/", response_model=list[Invoice])
 async def list_invoices(
-    project_id: Optional[UUID] = Query(None, description="Filtrar por projeto"),
+    project_id: Optional[int] = Query(None, description="Filtrar por projeto"),
     status: Optional[InvoiceStatus] = Query(None, description="Filtrar por status"),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0)

@@ -53,7 +53,7 @@ class InvoiceRepository:
 
         # Preparar dados
         invoice_data = {
-            "project_id": str(data.project_id),
+            "project_id": data.project_id,
             "numero_fatura": numero_fatura,
             "descricao": data.descricao,
             "valor": float(data.valor),
@@ -104,7 +104,7 @@ class InvoiceRepository:
 
     async def list_invoices(
         self,
-        project_id: Optional[UUID] = None,
+        project_id: Optional[int] = None,
         status: Optional[InvoiceStatus] = None,
         limit: int = 100,
         offset: int = 0
@@ -120,7 +120,7 @@ class InvoiceRepository:
             """)
 
         if project_id:
-            query = query.eq("project_id", str(project_id))
+            query = query.eq("project_id", project_id)
 
         if status:
             query = query.eq("status", status.value)

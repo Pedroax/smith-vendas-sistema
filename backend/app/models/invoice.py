@@ -31,7 +31,7 @@ class MetodoPagamento(str, Enum):
 
 class InvoiceBase(BaseModel):
     """Modelo base de fatura"""
-    project_id: UUID
+    project_id: int
     descricao: str = Field(..., min_length=1, max_length=500)
     valor: Decimal = Field(..., gt=0, decimal_places=2)
     desconto: Decimal = Field(default=Decimal("0"), ge=0, decimal_places=2)

@@ -5,7 +5,7 @@
 -- Criar tabela de faturas
 CREATE TABLE IF NOT EXISTS invoices (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+  project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
 
   -- Identificação
   numero_fatura TEXT UNIQUE NOT NULL,  -- INV-2026-001

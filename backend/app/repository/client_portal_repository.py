@@ -23,6 +23,8 @@ from app.models.client_portal import (
     Payment, PaymentCreate, PaymentUpdate, PaymentStatus,
     PROJECT_TEMPLATES
 )
+from app.models.task import TaskCreate, TaskStatus, TaskPriority
+from app.repository.task_repository import get_task_repository
 
 
 class ClientPortalRepository:
@@ -223,6 +225,85 @@ class ClientPortalRepository:
                     titulo="Projeto criado",
                     descricao=f"Projeto '{data.nome}' foi criado"
                 ))
+
+                # Criar tarefas automáticas (mix de administrativo + técnico)
+                logger.info("📋 Criando tarefas automáticas para o projeto...")
+                task_repo = get_task_repository()
+
+                tarefas_automaticas = [
+                    # HOJE - Urgente
+                    {
+                        "titulo": f"Fazer briefing - {data.nome}",
+                        "descricao": "Reunir requisitos, objetivos e expectativas do cliente",
+                        "status": TaskStatus.HOJE,
+                        "prioridade": TaskPriority.ALTA
+                    },
+                    # ESTA SEMANA - Administrativo
+                    {
+                        "titulo": f"Coletar materiais do cliente - {data.nome}",
+                        "descricao": "Solicitar e receber materiais necessários (logo, textos, credenciais, etc)",
+                        "status": TaskStatus.ESTA_SEMANA,
+                        "prioridade": TaskPriority.ALTA
+                    },
+                    {
+                        "titulo": f"Agendar reunião de kickoff - {data.nome}",
+                        "descricao": "Marcar reunião inicial para alinhamento do projeto",
+                        "status": TaskStatus.ESTA_SEMANA,
+                        "prioridade": TaskPriority.MEDIA
+                    },
+                    # ESTA SEMANA - Técnico
+                    {
+                        "titulo": f"Configurar ambiente de desenvolvimento - {data.nome}",
+                        "descricao": "Setup de repositório, dependências e infraestrutura inicial",
+                        "status": TaskStatus.ESTA_SEMANA,
+                        "prioridade": TaskPriority.MEDIA
+                    },
+                    # DEPOIS - Técnico/Desenvolvimento
+                    {
+                        "titulo": f"Desenvolver funcionalidades principais - {data.nome}",
+                        "descricao": "Implementar as features core do projeto",
+                        "status": TaskStatus.DEPOIS,
+                        "prioridade": TaskPriority.ALTA
+                    },
+                    {
+                        "titulo": f"Integrar APIs e serviços - {data.nome}",
+                        "descricao": "Conectar com serviços externos necessários (WhatsApp, OpenAI, etc)",
+                        "status": TaskStatus.DEPOIS,
+                        "prioridade": TaskPriority.MEDIA
+                    },
+                    {
+                        "titulo": f"Fazer testes e correções - {data.nome}",
+                        "descricao": "QA, testes de integração e correção de bugs",
+                        "status": TaskStatus.DEPOIS,
+                        "prioridade": TaskPriority.MEDIA
+                    },
+                    {
+                        "titulo": f"Deploy e configuração final - {data.nome}",
+                        "descricao": "Colocar em produção e configurar ambientes",
+                        "status": TaskStatus.DEPOIS,
+                        "prioridade": TaskPriority.ALTA
+                    },
+                    {
+                        "titulo": f"Enviar para homologação do cliente - {data.nome}",
+                        "descricao": "Apresentar versão final e coletar feedback",
+                        "status": TaskStatus.DEPOIS,
+                        "prioridade": TaskPriority.ALTA
+                    }
+                ]
+
+                for tarefa_data in tarefas_automaticas:
+                    try:
+                        tarefa = await task_repo.create_task(TaskCreate(
+                            titulo=tarefa_data["titulo"],
+                            descricao=tarefa_data["descricao"],
+                            status=tarefa_data["status"],
+                            prioridade=tarefa_data["prioridade"],
+                            project_id=str(project.id)
+                        ))
+                        if tarefa:
+                            logger.info(f"  ✅ Tarefa criada: {tarefa_data['titulo']}")
+                    except Exception as e:
+                        logger.warning(f"  ⚠️ Erro ao criar tarefa '{tarefa_data['titulo']}': {e}")
 
                 logger.success(f"Projeto criado: {data.nome}")
                 return project

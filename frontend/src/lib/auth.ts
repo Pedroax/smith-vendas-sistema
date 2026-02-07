@@ -2,13 +2,13 @@
  * Authentication utilities for token management
  */
 
+import { API_URL } from './api-config';
+
 const ACCESS_TOKEN_KEY = 'portal_access_token';
 const REFRESH_TOKEN_KEY = 'portal_refresh_token';
 
 const ADMIN_ACCESS_TOKEN_KEY = 'smith_access_token';
 const ADMIN_REFRESH_TOKEN_KEY = 'smith_refresh_token';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export const authStorage = {
   /**

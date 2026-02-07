@@ -4,8 +4,7 @@
 
 import { Lead, LeadStatus, LeadOrigin, LeadTemperature } from '@/types/lead';
 import { APIError, handleAPIError } from './errors';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+import { API_URL as API_BASE_URL } from './api-config';
 
 export interface CreateLeadData {
   nome: string;

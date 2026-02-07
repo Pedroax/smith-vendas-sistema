@@ -4,8 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Search, Loader2, Users, Calendar, MessageSquare, Briefcase, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/contexts/ToastContext';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+import { API_URL } from '@/lib/api-config';
 
 interface SearchResult {
   id: string;

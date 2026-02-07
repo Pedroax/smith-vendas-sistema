@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Settings, Bell, Lock, User, Shield, Save, CheckCircle2, Loader2 } from 'lucide-react';
 import { useToast } from '@/contexts/ToastContext';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+import { API_URL } from '@/lib/api-config';
 
 const tabs = [
   { id: 'perfil', label: 'Perfil', icon: User },

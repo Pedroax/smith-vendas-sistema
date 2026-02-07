@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Loader2, User, Mail, Phone, Building2, Save, CheckCircle2 } from 'lucide-react';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+import { API_URL } from '@/lib/api-config';
 
 interface ClientData {
   id: string;

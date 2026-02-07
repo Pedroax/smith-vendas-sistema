@@ -13,7 +13,7 @@ import { FileUpload } from '@/components/FileUpload';
 import { useToast } from '@/contexts/ToastContext';
 import { authStorage } from '@/lib/auth';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+import { API_URL } from '@/lib/api-config';
 
 interface Stage {
   id: string;

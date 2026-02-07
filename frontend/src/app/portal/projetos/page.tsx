@@ -7,7 +7,7 @@ import {
   Loader2, Calendar, CheckCircle2, Clock, AlertCircle
 } from 'lucide-react';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+import { API_URL } from '@/lib/api-config';
 
 interface Project {
   id: string;

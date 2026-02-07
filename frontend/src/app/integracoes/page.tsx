@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Zap, MessageCircle, Calendar, CheckCircle2, AlertCircle, XCircle, ExternalLink, RefreshCw, Loader2 } from 'lucide-react';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+import { API_URL } from '@/lib/api-config';
 
 interface WebhookStatus {
   webhook: string;

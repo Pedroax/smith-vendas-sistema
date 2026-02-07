@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Mail, Lock, Eye, EyeOff, User, Building2, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { authStorage } from '@/lib/auth';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+import { API_URL } from '@/lib/api-config';
 
 export default function PortalRegister() {
   const router = useRouter();

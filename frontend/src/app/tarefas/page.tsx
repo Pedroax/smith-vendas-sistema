@@ -6,8 +6,7 @@ import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-
 import { CSS } from '@dnd-kit/utilities';
 import { Plus, Trash2, X, Calendar, User, FolderOpen, Loader2, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/contexts/ToastContext';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+import { API_URL } from '@/lib/api-config';
 
 // --- Types ---
 interface Task {

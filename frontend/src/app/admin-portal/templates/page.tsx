@@ -6,7 +6,7 @@ import { Plus, Edit2, Trash2, Copy, Loader2, FileText, CheckCircle2, Package } f
 import { useToast } from '@/contexts/ToastContext';
 import { adminFetch } from '@/lib/auth';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+import { API_URL } from '@/lib/api-config';
 
 interface Etapa {
   nome: string;

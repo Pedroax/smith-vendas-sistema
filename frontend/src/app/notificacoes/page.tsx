@@ -5,7 +5,7 @@ import { Bell, Loader2, Check, CheckCheck, Trash2, Filter } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/contexts/ToastContext';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+import { API_URL } from '@/lib/api-config';
 
 interface Notification {
   id: string;

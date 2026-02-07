@@ -154,10 +154,6 @@ const withPWAConfig = withPWA({
 const nextConfig = withPWAConfig({
   reactStrictMode: true,
   turbopack: {}, // Next.js 16 Turbopack support
-  env: {
-    // Forçar HTTPS em produção
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'https://smith-vendas-sistema-production.up.railway.app',
-  },
   images: {
     remotePatterns: [
       {

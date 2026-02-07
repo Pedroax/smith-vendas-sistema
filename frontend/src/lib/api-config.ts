@@ -1,31 +1,26 @@
 /**
  * Configuração da API
- * HARDCODED para evitar problemas de Mixed Content
+ * HARDCODED HTTPS - funciona no CLIENT e SERVER (SSR)
  */
 
-// HARDCODED - SEM VARIÁVEL DE AMBIENTE
+// HARDCODED - SEMPRE HTTPS em produção
 const API_URL_PRODUCTION = 'https://smith-vendas-sistema-production.up.railway.app';
 const API_URL_DEV = 'http://localhost:8000';
 
-// Detectar se está em localhost
+// Detectar ambiente
+// SERVER (SSR): sem window → assume produção → HTTPS
+// CLIENT: verifica hostname
 const isLocalhost = typeof window !== 'undefined'
   ? window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-  : false;
+  : false; // No servidor Next.js SSR, sempre usa produção (HTTPS)
 
 // Exportar URL - SEMPRE HTTPS exceto localhost
-const computedUrl = isLocalhost ? API_URL_DEV : API_URL_PRODUCTION;
+export const API_URL = isLocalhost ? API_URL_DEV : API_URL_PRODUCTION;
 
-// GARANTIR que é HTTPS em produção
-export const API_URL = computedUrl.startsWith('http://') && !isLocalhost
-  ? computedUrl.replace('http://', 'https://')
-  : computedUrl;
-
-// Debug detalhado
+// Debug
 if (typeof window !== 'undefined') {
-  console.log('🔧 API_URL (FINAL):', API_URL);
-  console.log('🔧 computedUrl:', computedUrl);
-  console.log('🔧 API_URL_PRODUCTION:', API_URL_PRODUCTION);
+  console.log('🔧 [CLIENT] API_URL:', API_URL);
   console.log('🌍 Hostname:', window.location.hostname);
-  console.log('📍 isLocalhost:', isLocalhost);
-  console.log('🔒 Starts with HTTPS?', API_URL.startsWith('https://'));
+} else {
+  console.log('🖥️  [SERVER SSR] API_URL:', API_URL);
 }

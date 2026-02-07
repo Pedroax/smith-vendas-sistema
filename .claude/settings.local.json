@@ -68,7 +68,16 @@
       "Bash(pkill:*)",
       "Bash(tasks)",
       "Bash(npm run build:*)",
-      "Bash(git config:*)"
+      "Bash(git config:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(python3 -c \"\nimport json\nlines = open\\(r''C:\\\\Users\\\\pedro\\\\.claude\\\\projects\\\\c--Users-pedro-Desktop-smith-vendas\\\\0c480ac9-a973-4943-b3d9-5cf4439f24f6.jsonl''\\).readlines\\(\\)\nfor line in lines:\n    try:\n        obj = json.loads\\(line\\)\n        # user messages\n        if obj.get\\(''type''\\) == ''user'':\n            msg = obj.get\\(''message'', {}\\)\n            content = msg.get\\(''content'', ''''\\)\n            if isinstance\\(content, str\\) and len\\(content\\) > 10:\n                print\\(f''USER [{obj.get\\(\"\"timestamp\"\",\"\"\"\"\\)}]: {content[:300]}''\\)\n            elif isinstance\\(content, list\\):\n                for block in content:\n                    if isinstance\\(block, dict\\) and block.get\\(''type''\\) == ''text'':\n                        print\\(f''USER [{obj.get\\(\"\"timestamp\"\",\"\"\"\"\\)}]: {block[\"\"text\"\"][:300]}''\\)\n    except:\n        pass\n\")",
+      "Bash(python3:*)",
+      "Bash(ls:*)",
+      "Bash(git ls-files:*)",
+      "Bash(for file in aprovacoes/page.tsx configuracoes/page.tsx entregas/page.tsx pagamentos/page.tsx timeline/page.tsx page.tsx)",
+      "Bash(do sed -i \"s/''portal_token''/''portal_access_token''/g\" \"$file\")",
+      "Bash(echo:*)",
+      "Bash(done)"
     ]
   }
 }

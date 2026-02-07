@@ -75,6 +75,18 @@ interface TimelineEvent {
   created_at: string;
 }
 
+interface ProjectDocument {
+  id: string;
+  nome: string;
+  tipo: 'contrato' | 'termo_entrega' | 'outro';
+  descricao?: string;
+  arquivo_url: string;
+  arquivo_nome: string;
+  arquivo_tamanho?: number;
+  uploaded_at: string;
+  uploaded_by: string;
+}
+
 interface Project {
   id: string;
   nome: string;
@@ -108,7 +120,7 @@ const STATUS_COLORS: Record<string, string> = {
   cancelado: 'bg-red-100 text-red-700',
 };
 
-const TABS = ['Etapas', 'Entregas', 'Aprovações', 'Pagamentos', 'Comentários', 'Timeline'];
+const TABS = ['Etapas', 'Entregas', 'Aprovações', 'Pagamentos', 'Documentos', 'Comentários', 'Timeline'];
 
 // ─── Main page ──────────────────────────────────────────────────────────────
 export default function AdminProjectDetailPage() {
@@ -123,6 +135,7 @@ export default function AdminProjectDetailPage() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
+  const [documents, setDocuments] = useState<ProjectDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('Etapas');
 
@@ -135,7 +148,9 @@ export default function AdminProjectDetailPage() {
   const [deliveryForm, setDeliveryForm] = useState({ nome: '', descricao: '', obrigatorio: true });
   const [approvalForm, setApprovalForm] = useState({ titulo: '', descricao: '', tipo: 'arquivo', arquivo_url: '', link_externo: '' });
   const [paymentForm, setPaymentForm] = useState({ descricao: '', valor: '', data_vencimento: '', parcela: '1', total_parcelas: '1' });
+  const [documentForm, setDocumentForm] = useState({ nome: '', tipo: 'contrato', descricao: '', arquivo_url: '' });
   const [selectedApprovalFile, setSelectedApprovalFile] = useState<File | null>(null);
+  const [selectedDocumentFile, setSelectedDocumentFile] = useState<File | null>(null);
 
   useEffect(() => {
     fetchAll();
@@ -211,6 +226,14 @@ export default function AdminProjectDetailPage() {
           console.log('    ✅ Timeline carregada');
         }
       } catch (err) { console.error('    ❌ Erro ao carregar timeline:', err); }
+
+      try {
+        const documentsRes = await adminFetch(`${API_URL}/api/portal/projects/${id}/documents`);
+        if (documentsRes.ok) {
+          setDocuments(await documentsRes.json());
+          console.log('    ✅ Documentos carregados');
+        }
+      } catch (err) { console.error('    ❌ Erro ao carregar documentos:', err); }
 
       console.log('✅ Carregamento concluído!');
     } catch (err) {
@@ -384,6 +407,74 @@ export default function AdminProjectDetailPage() {
     } catch (err) {
       console.error(err);
       showToast('Erro ao atualizar pagamento', 'error');
+    }
+  };
+
+  const createDocument = async () => {
+    setSubmitting(true);
+    try {
+      let arquivo_url = documentForm.arquivo_url;
+      let arquivo_nome = '';
+      let arquivo_tamanho = 0;
+
+      // Se tem arquivo selecionado, fazer upload
+      if (selectedDocumentFile) {
+        const uploadFormData = new FormData();
+        uploadFormData.append('file', selectedDocumentFile);
+
+        const uploadRes = await adminFetch(`${API_URL}/api/upload`, {
+          method: 'POST',
+          body: uploadFormData,
+        });
+
+        if (!uploadRes.ok) {
+          showToast('Erro ao fazer upload do arquivo', 'error');
+          setSubmitting(false);
+          return;
+        }
+
+        const uploadData = await uploadRes.json();
+        arquivo_url = uploadData.url;
+        arquivo_nome = selectedDocumentFile.name;
+        arquivo_tamanho = selectedDocumentFile.size;
+      } else if (documentForm.arquivo_url) {
+        // URL manual fornecida
+        const urlParts = documentForm.arquivo_url.split('/');
+        arquivo_nome = urlParts[urlParts.length - 1];
+      } else {
+        showToast('Selecione um arquivo ou forneça uma URL', 'error');
+        setSubmitting(false);
+        return;
+      }
+
+      const res = await adminFetch(`${API_URL}/api/portal/projects/${id}/documents`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          project_id: id,
+          nome: documentForm.nome,
+          tipo: documentForm.tipo,
+          descricao: documentForm.descricao || null,
+          arquivo_url,
+          arquivo_nome,
+          arquivo_tamanho,
+        }),
+      });
+
+      if (res.ok) {
+        showToast('Documento adicionado!', 'success');
+        setDocumentForm({ nome: '', tipo: 'contrato', descricao: '', arquivo_url: '' });
+        setSelectedDocumentFile(null);
+        setModalType(null);
+        await fetchAll();
+      } else {
+        showToast('Erro ao adicionar documento', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Erro ao adicionar documento', 'error');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -676,6 +767,114 @@ export default function AdminProjectDetailPage() {
     </div>
   );
 
+  const renderDocumentos = () => {
+    const tipoLabels: Record<string, string> = {
+      contrato: 'Contrato',
+      termo_entrega: 'Termo de Entrega',
+      outro: 'Outro',
+    };
+
+    const tipoColors: Record<string, string> = {
+      contrato: 'bg-purple-100 text-purple-700',
+      termo_entrega: 'bg-blue-100 text-blue-700',
+      outro: 'bg-gray-100 text-gray-700',
+    };
+
+    const formatFileSize = (bytes?: number) => {
+      if (!bytes) return '';
+      const mb = bytes / (1024 * 1024);
+      return mb >= 1 ? `${mb.toFixed(1)} MB` : `${(bytes / 1024).toFixed(0)} KB`;
+    };
+
+    return (
+      <div>
+        <div className="flex justify-between items-center mb-4">
+          <p className="text-sm text-gray-500">
+            {documents.length} documento{documents.length !== 1 ? 's' : ''}
+          </p>
+          <button
+            onClick={() => setModalType('add_document')}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Adicionar Documento
+          </button>
+        </div>
+
+        {documents.length === 0 ? (
+          <div className="text-center py-10">
+            <FileCheck className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+            <p className="text-gray-500">Nenhum documento anexado</p>
+          </div>
+        ) : (
+          <div className="grid gap-3">
+            {documents.map((doc) => (
+              <div key={doc.id} className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <FileCheck className="w-5 h-5 text-purple-600" />
+                      <h4 className="font-semibold text-gray-900">{doc.nome}</h4>
+                      <span className={`px-2 py-1 text-xs rounded-full ${tipoColors[doc.tipo]}`}>
+                        {tipoLabels[doc.tipo]}
+                      </span>
+                    </div>
+                    {doc.descricao && (
+                      <p className="text-sm text-gray-600 mb-2">{doc.descricao}</p>
+                    )}
+                    <div className="flex items-center gap-4 text-xs text-gray-400">
+                      <span>{doc.arquivo_nome}</span>
+                      {doc.arquivo_tamanho && <span>{formatFileSize(doc.arquivo_tamanho)}</span>}
+                      <span>
+                        {new Date(doc.uploaded_at).toLocaleDateString('pt-BR', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric',
+                        })}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <a
+                      href={doc.arquivo_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm"
+                    >
+                      Download
+                    </a>
+                    <button
+                      onClick={async () => {
+                        if (confirm('Deletar este documento?')) {
+                          try {
+                            const res = await adminFetch(`${API_URL}/api/portal/documents/${doc.id}`, {
+                              method: 'DELETE',
+                            });
+                            if (res.ok) {
+                              showToast('Documento deletado', 'success');
+                              await fetchAll();
+                            } else {
+                              showToast('Erro ao deletar documento', 'error');
+                            }
+                          } catch (err) {
+                            showToast('Erro ao deletar documento', 'error');
+                          }
+                        }
+                      }}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderTimeline = () => (
     <div className="max-w-xl">
       {timeline.length === 0 ? (
@@ -717,6 +916,7 @@ export default function AdminProjectDetailPage() {
     'Entregas': renderEntregas,
     'Aprovações': renderAprovacoes,
     'Pagamentos': renderPagamentos,
+    'Documentos': renderDocumentos,
     'Comentários': renderComentarios,
     'Timeline': renderTimeline,
   };
@@ -726,7 +926,10 @@ export default function AdminProjectDetailPage() {
     if (!modalType) return null;
 
     const titles: Record<string, string> = {
-      delivery: 'Nova Entrega', approval: 'Nova Aprovação', payment: 'Novo Pagamento',
+      delivery: 'Nova Entrega',
+      approval: 'Nova Aprovação',
+      payment: 'Novo Pagamento',
+      add_document: 'Adicionar Documento',
     };
 
     return (
@@ -868,6 +1071,100 @@ export default function AdminProjectDetailPage() {
                 </div>
                 <button onClick={createPayment} disabled={submitting || !paymentForm.descricao || !paymentForm.valor || !paymentForm.data_vencimento} className="w-full py-3 bg-purple-600 text-white font-medium rounded-xl hover:bg-purple-700 disabled:opacity-50 transition-colors">
                   {submitting ? 'Criando...' : 'Criar'}
+                </button>
+              </>
+            )}
+
+            {modalType === 'add_document' && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Nome do documento</label>
+                  <input
+                    type="text"
+                    value={documentForm.nome}
+                    onChange={(e) => setDocumentForm((f) => ({ ...f, nome: e.target.value }))}
+                    placeholder="Contrato de Prestação de Serviços"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Tipo</label>
+                  <select
+                    value={documentForm.tipo}
+                    onChange={(e) => setDocumentForm((f) => ({ ...f, tipo: e.target.value }))}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/50 bg-white"
+                  >
+                    <option value="contrato">Contrato</option>
+                    <option value="termo_entrega">Termo de Entrega</option>
+                    <option value="outro">Outro</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Descrição (opcional)</label>
+                  <input
+                    type="text"
+                    value={documentForm.descricao}
+                    onChange={(e) => setDocumentForm((f) => ({ ...f, descricao: e.target.value }))}
+                    placeholder="Contrato assinado pelo cliente"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500"
+                  />
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Arquivo</label>
+                    <div className="border-2 border-dashed border-gray-200 rounded-xl p-4">
+                      {selectedDocumentFile ? (
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Upload className="w-4 h-4 text-purple-600" />
+                            <span className="text-sm text-gray-700">{selectedDocumentFile.name}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedDocumentFile(null)}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <label className="cursor-pointer flex flex-col items-center gap-2 py-2">
+                          <Upload className="w-6 h-6 text-gray-400" />
+                          <span className="text-sm text-gray-600">Clique para selecionar arquivo</span>
+                          <span className="text-xs text-gray-400">(PDF, DOCX, etc - máx 50MB)</span>
+                          <input
+                            type="file"
+                            onChange={(e) => setSelectedDocumentFile(e.target.files?.[0] || null)}
+                            accept=".pdf,.doc,.docx,.txt"
+                            className="hidden"
+                          />
+                        </label>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-px bg-gray-200" />
+                    <span className="text-xs text-gray-400">ou</span>
+                    <div className="flex-1 h-px bg-gray-200" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">URL do arquivo</label>
+                    <input
+                      type="text"
+                      value={documentForm.arquivo_url}
+                      onChange={(e) => setDocumentForm((f) => ({ ...f, arquivo_url: e.target.value }))}
+                      placeholder="https://..."
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500"
+                      disabled={!!selectedDocumentFile}
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={createDocument}
+                  disabled={submitting || !documentForm.nome || (!selectedDocumentFile && !documentForm.arquivo_url)}
+                  className="w-full py-3 bg-purple-600 text-white font-medium rounded-xl hover:bg-purple-700 disabled:opacity-50 transition-colors"
+                >
+                  {submitting ? 'Enviando...' : 'Adicionar'}
                 </button>
               </>
             )}

@@ -21,6 +21,7 @@ from app.models.client_portal import (
     TimelineEvent, TimelineEventCreate, TimelineEventType,
     Comment, CommentCreate,
     Payment, PaymentCreate, PaymentUpdate, PaymentStatus,
+    ProjectDocument, ProjectDocumentCreate, DocumentType,
     PROJECT_TEMPLATES
 )
 from app.models.task import TaskCreate, TaskStatus, TaskPriority
@@ -931,6 +932,70 @@ class ClientPortalRepository:
         except Exception as e:
             logger.error(f"Erro ao buscar pagamento: {e}")
             return None
+
+    # ============================================
+    # DOCUMENTOS DO PROJETO
+    # ============================================
+
+    async def create_project_document(self, data) -> Optional:
+        """Criar documento do projeto"""
+        try:
+            from app.models.client_portal import ProjectDocument
+
+            doc_data = {
+                "id": str(uuid4()),
+                "project_id": str(data.project_id),
+                "nome": data.nome,
+                "tipo": data.tipo.value if hasattr(data.tipo, "value") else data.tipo,
+                "descricao": data.descricao,
+                "arquivo_url": data.arquivo_url,
+                "arquivo_nome": data.arquivo_nome,
+                "arquivo_tamanho": data.arquivo_tamanho,
+                "uploaded_by": "admin",
+                "uploaded_at": datetime.utcnow().isoformat()
+            }
+
+            result = self.supabase.table("project_documents").insert(doc_data).execute()
+
+            if result.data:
+                return ProjectDocument(**result.data[0])
+            return None
+        except Exception as e:
+            logger.error(f"Erro ao criar documento: {e}")
+            return None
+
+    async def list_project_documents(self, project_id: UUID) -> List:
+        """Listar documentos de um projeto"""
+        try:
+            from app.models.client_portal import ProjectDocument
+
+            result = self.supabase.table("project_documents").select("*").eq("project_id", str(project_id)).order("uploaded_at", desc=True).execute()
+            return [ProjectDocument(**d) for d in result.data] if result.data else []
+        except Exception as e:
+            logger.error(f"Erro ao listar documentos: {e}")
+            return []
+
+    async def get_project_document(self, document_id: UUID) -> Optional:
+        """Buscar documento por ID"""
+        try:
+            from app.models.client_portal import ProjectDocument
+
+            result = self.supabase.table("project_documents").select("*").eq("id", str(document_id)).execute()
+            if result.data:
+                return ProjectDocument(**result.data[0])
+            return None
+        except Exception as e:
+            logger.error(f"Erro ao buscar documento: {e}")
+            return None
+
+    async def delete_project_document(self, document_id: UUID) -> bool:
+        """Deletar documento"""
+        try:
+            result = self.supabase.table("project_documents").delete().eq("id", str(document_id)).execute()
+            return bool(result.data)
+        except Exception as e:
+            logger.error(f"Erro ao deletar documento: {e}")
+            return False
 
     # ============================================
     # ESTATÍSTICAS

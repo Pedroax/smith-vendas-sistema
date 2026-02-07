@@ -388,6 +388,52 @@ class Payment(PaymentBase):
 
 
 # ============================================
+# MODELOS DE DOCUMENTO
+# ============================================
+
+class DocumentType(str, Enum):
+    """Tipo de documento"""
+    CONTRATO = "contrato"
+    TERMO_ENTREGA = "termo_entrega"
+    OUTRO = "outro"
+
+
+class ProjectDocumentBase(BaseModel):
+    """Base do documento"""
+    nome: str = Field(..., min_length=2, max_length=200)
+    tipo: DocumentType = DocumentType.OUTRO
+    descricao: Optional[str] = None
+
+
+class ProjectDocumentCreate(ProjectDocumentBase):
+    """Criar documento"""
+    project_id: UUID
+    arquivo_url: str = Field(..., min_length=5)
+    arquivo_nome: str = Field(..., min_length=1)
+    arquivo_tamanho: Optional[int] = None  # Bytes
+
+
+class ProjectDocumentUpdate(BaseModel):
+    """Atualizar documento"""
+    nome: Optional[str] = None
+    descricao: Optional[str] = None
+
+
+class ProjectDocument(ProjectDocumentBase):
+    """Documento completo"""
+    id: UUID = Field(default_factory=uuid4)
+    project_id: UUID
+    arquivo_url: str
+    arquivo_nome: str
+    arquivo_tamanho: Optional[int] = None
+    uploaded_at: datetime = Field(default_factory=datetime.utcnow)
+    uploaded_by: Optional[str] = "admin"  # Quem fez upload
+
+    class Config:
+        from_attributes = True
+
+
+# ============================================
 # MODELOS COMPOSTOS (Para respostas da API)
 # ============================================
 

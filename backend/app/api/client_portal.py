@@ -24,6 +24,7 @@ from app.models.client_portal import (
     TimelineEvent, TimelineEventCreate,
     Comment, CommentCreate,
     Payment, PaymentCreate, PaymentUpdate,
+    ProjectDocument, ProjectDocumentCreate, DocumentType,
     PROJECT_TEMPLATES
 )
 from app.repository.client_portal_repository import get_client_portal_repository
@@ -933,3 +934,66 @@ async def delete_template(template_id: str, _admin=Depends(get_current_admin)):
     del PROJECT_TEMPLATES[template_id]
 
     return {"success": True, "message": "Template deletado com sucesso"}
+
+
+# ============================================
+# DOCUMENTOS DO PROJETO
+# ============================================
+
+@router.post("/projects/{project_id}/documents", response_model=ProjectDocument)
+async def create_project_document(
+    project_id: str,
+    data: ProjectDocumentCreate,
+    _admin=Depends(get_current_admin)
+):
+    """Criar documento do projeto (admin)"""
+    repo = get_client_portal_repository()
+
+    # Validar que projeto existe
+    project = await repo.get_project_by_id(UUID(project_id))
+    if not project:
+        raise HTTPException(status_code=404, detail="Projeto não encontrado")
+
+    # Criar documento
+    document = await repo.create_project_document(data)
+    if not document:
+        raise HTTPException(status_code=500, detail="Erro ao criar documento")
+
+    return document
+
+
+@router.get("/projects/{project_id}/documents", response_model=List[ProjectDocument])
+async def list_project_documents(
+    project_id: str,
+    _admin=Depends(get_current_admin)
+):
+    """Listar documentos do projeto (admin)"""
+    repo = get_client_portal_repository()
+    documents = await repo.list_project_documents(UUID(project_id))
+    return documents
+
+
+@router.get("/documents/{document_id}", response_model=ProjectDocument)
+async def get_project_document(
+    document_id: str,
+    _admin=Depends(get_current_admin)
+):
+    """Buscar documento por ID (admin)"""
+    repo = get_client_portal_repository()
+    document = await repo.get_project_document(UUID(document_id))
+    if not document:
+        raise HTTPException(status_code=404, detail="Documento não encontrado")
+    return document
+
+
+@router.delete("/documents/{document_id}")
+async def delete_project_document(
+    document_id: str,
+    _admin=Depends(get_current_admin)
+):
+    """Deletar documento (admin)"""
+    repo = get_client_portal_repository()
+    success = await repo.delete_project_document(UUID(document_id))
+    if not success:
+        raise HTTPException(status_code=404, detail="Documento não encontrado")
+    return {"success": True, "message": "Documento deletado com sucesso"}

@@ -4,7 +4,7 @@ const withPWAConfig = withPWA({
   dest: 'public',
   register: true,
   skipWaiting: true,
-  disable: process.env.NODE_ENV === 'development', // Desabilitar em dev para facilitar debug
+  disable: true, // DESABILITADO TEMPORARIAMENTE - causando problemas de cache
   buildExcludes: [/middleware-manifest\.json$/],
   // Incrementar versão para forçar atualização do service worker
   scope: '/',

@@ -1,6 +1,6 @@
 'use client';
 
-import { Home, Users, MessageSquare, Calendar, BarChart3, Settings, Bot, Zap, Kanban, Globe, Package, CheckSquare, LogOut } from 'lucide-react';
+import { Home, Users, MessageSquare, Calendar, BarChart3, Settings, Bot, Zap, Kanban, Globe, Package, CheckSquare, LogOut, DollarSign } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { adminAuth } from '@/lib/auth';
@@ -12,6 +12,7 @@ const menuItems = [
   { icon: Calendar, label: 'Agendamentos', href: '/agendamentos', badge: null },
   { icon: Kanban, label: 'Pipeline', href: '/pipeline', badge: null },
   { icon: CheckSquare, label: 'Tarefas', href: '/tarefas', badge: null },
+  { icon: DollarSign, label: 'Financeiro', href: '/financeiro', badge: null },
   { icon: BarChart3, label: 'Analytics', href: '/analytics/dashboard', badge: null },
   { icon: Bot, label: 'Agente IA', href: '/agente', badge: '🔴' },
   { icon: Globe, label: 'Portal', href: '/admin-portal', badge: null },

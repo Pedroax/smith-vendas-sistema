@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
   LayoutDashboard, FolderKanban, Clock, FileCheck, MessageSquare,
-  CreditCard, Settings, LogOut, User, ChevronRight
+  CreditCard, Settings, LogOut, User, ChevronRight, DollarSign
 } from 'lucide-react';
 
 interface Client {
@@ -65,7 +65,7 @@ export default function PortalLayout({
     { href: '/portal/timeline', icon: Clock, label: 'Timeline' },
     { href: '/portal/entregas', icon: FileCheck, label: 'Entregas' },
     { href: '/portal/aprovacoes', icon: MessageSquare, label: 'Aprovações' },
-    { href: '/portal/pagamentos', icon: CreditCard, label: 'Pagamentos' },
+    { href: '/portal/financeiro', icon: DollarSign, label: 'Financeiro' },
     { href: '/portal/configuracoes', icon: Settings, label: 'Configurações' },
   ];
 

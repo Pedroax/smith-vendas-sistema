@@ -5,6 +5,11 @@ const withPWAConfig = withPWA({
   register: true,
   skipWaiting: true,
   disable: process.env.NODE_ENV === 'development', // Desabilitar em dev para facilitar debug
+  buildExcludes: [/middleware-manifest\.json$/],
+  // Incrementar versão para forçar atualização do service worker
+  scope: '/',
+  sw: 'sw.js',
+  reloadOnOnline: true,
   runtimeCaching: [
     {
       urlPattern: /^https:\/\/fonts\.(?:gstatic)\.com\/.*/i,
@@ -149,6 +154,10 @@ const withPWAConfig = withPWA({
 const nextConfig = withPWAConfig({
   reactStrictMode: true,
   turbopack: {}, // Next.js 16 Turbopack support
+  env: {
+    // Forçar HTTPS em produção
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'https://smith-vendas-sistema-production.up.railway.app',
+  },
   images: {
     remotePatterns: [
       {

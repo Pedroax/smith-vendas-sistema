@@ -66,9 +66,9 @@ class Settings(BaseSettings):
     jwt_algorithm: str = Field(default="HS256", env="JWT_ALGORITHM")
     jwt_expiration_hours: int = Field(default=24, env="JWT_EXPIRATION_HOURS")
 
-    # CORS
+    # CORS - SEMPRE incluir Vercel
     cors_origins: str = Field(
-        default="http://localhost:3000,http://localhost:5173,https://smith-vendas-sistema.vercel.app",
+        default="*",  # Permitir todos em desenvolvimento
         env="CORS_ORIGINS"
     )
 

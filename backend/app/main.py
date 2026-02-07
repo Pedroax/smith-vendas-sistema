@@ -90,7 +90,7 @@ if not settings.debug:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
-    allow_credentials=True,
+    allow_credentials=False,  # Não pode usar credentials com "*"
     allow_methods=["*"],
     allow_headers=["*"],
 )

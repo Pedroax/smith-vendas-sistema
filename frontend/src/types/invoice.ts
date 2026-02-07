@@ -21,7 +21,7 @@ export enum MetodoPagamento {
 
 export interface Invoice {
   id: string;
-  project_id: string;
+  project_id: number;
   numero_fatura: string;
   descricao: string;
 
@@ -65,7 +65,7 @@ export interface Invoice {
 }
 
 export interface InvoiceCreate {
-  project_id: string;
+  project_id: number;
   descricao: string;
   valor: number;
   desconto?: number;

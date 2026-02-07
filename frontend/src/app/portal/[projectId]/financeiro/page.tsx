@@ -23,7 +23,7 @@ export default function PortalFinanceiroPage() {
   const fetchInvoices = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_URL}/api/invoices?project_id=${projectId}`);
+      const res = await fetch(`${API_URL}/api/invoices?project_id=${parseInt(projectId)}`);
       if (res.ok) {
         const data = await res.json();
         setInvoices(data);

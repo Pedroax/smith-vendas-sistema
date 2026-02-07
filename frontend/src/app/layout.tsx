@@ -1,3 +1,4 @@
+import "@/lib/setup-fetch"; // DEVE SER O PRIMEIRO IMPORT - Interceptor de fetch global
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";

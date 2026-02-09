@@ -3,7 +3,7 @@ Serviço de Storage para upload de arquivos via Supabase
 """
 
 import os
-from typing import Optional, Set, Tuple
+from typing import Optional, Set, Tuple, Union
 from uuid import UUID
 from fastapi import UploadFile, HTTPException
 from loguru import logger
@@ -59,7 +59,7 @@ class StorageService:
         self,
         bucket: str,
         file: UploadFile,
-        project_id: UUID,
+        project_id: Union[UUID, int],
         item_id: UUID,
         allowed_types: list[str] = ['image', 'document', 'video', 'archive']
     ) -> dict:

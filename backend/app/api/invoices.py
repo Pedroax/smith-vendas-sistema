@@ -5,7 +5,7 @@ from datetime import date
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, UploadFile, File
 from loguru import logger
 
 from app.models.invoice import (
@@ -18,6 +18,7 @@ from app.models.invoice import (
     InvoiceUploadComprovante,
 )
 from app.repository.invoice_repository import get_invoice_repository
+from app.services.storage_service import get_storage_service
 
 router = APIRouter(prefix="/api/invoices", tags=["Invoices"])
 
@@ -163,6 +164,59 @@ async def upload_comprovante(invoice_id: UUID, data: InvoiceUploadComprovante):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/{invoice_id}/upload-comprovante-file", response_model=Invoice)
+async def upload_comprovante_file(
+    invoice_id: UUID,
+    file: UploadFile = File(...)
+):
+    """
+    Cliente faz upload do arquivo de comprovante de pagamento (NOVO - com arquivo real)
+
+    - Recebe arquivo diretamente (imagem ou PDF)
+    - Faz upload para Supabase Storage
+    - Atualiza comprovante_url
+    - Muda status para 'aguardando_conf'
+    """
+    try:
+        repo = get_invoice_repository()
+        storage = get_storage_service()
+
+        # Verificar se fatura existe
+        existing = await repo.get_invoice_by_id(invoice_id)
+        if not existing:
+            raise HTTPException(status_code=404, detail="Fatura não encontrada")
+
+        # Não pode enviar comprovante se já estiver paga ou cancelada
+        if existing.status in [InvoiceStatus.PAGO, InvoiceStatus.CANCELADO]:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Não é possível enviar comprovante. Status atual: {existing.status.value}"
+            )
+
+        # Upload do arquivo para Supabase Storage
+        # Bucket: payment-proofs
+        # Path: {project_id}/{invoice_id}/{filename}
+        upload_result = await storage.upload_file(
+            bucket="payment-proofs",
+            file=file,
+            project_id=existing.project_id,
+            item_id=invoice_id,
+            allowed_types=['image', 'document']
+        )
+
+        # Atualizar fatura com URL do comprovante
+        invoice = await repo.upload_comprovante(invoice_id, upload_result['url'])
+        logger.success(f"✅ Comprovante enviado para fatura {invoice_id}: {upload_result['filename']}")
+
+        return invoice
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Erro ao fazer upload do comprovante: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/{invoice_id}/confirmar-pagamento", response_model=Invoice)
 async def confirmar_pagamento(invoice_id: UUID, data: InvoiceConfirmarPagamento):
     """
@@ -223,6 +277,52 @@ async def upload_nota_fiscal(invoice_id: UUID, nota_fiscal_url: str):
         raise
     except Exception as e:
         logger.error(f"Erro ao fazer upload da nota fiscal: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{invoice_id}/upload-nota-fiscal-file", response_model=Invoice)
+async def upload_nota_fiscal_file(
+    invoice_id: UUID,
+    file: UploadFile = File(...)
+):
+    """
+    Admin faz upload do arquivo de nota fiscal (NOVO - com arquivo real)
+
+    - Recebe arquivo PDF da nota fiscal
+    - Faz upload para Supabase Storage
+    - Atualiza nota_fiscal_url
+    - Cliente poderá baixar
+    """
+    try:
+        repo = get_invoice_repository()
+        storage = get_storage_service()
+
+        # Verificar se fatura existe
+        existing = await repo.get_invoice_by_id(invoice_id)
+        if not existing:
+            raise HTTPException(status_code=404, detail="Fatura não encontrada")
+
+        # Upload do arquivo para Supabase Storage
+        # Bucket: invoices (notas fiscais)
+        # Path: {project_id}/{invoice_id}/nf_{filename}
+        upload_result = await storage.upload_file(
+            bucket="invoices",
+            file=file,
+            project_id=existing.project_id,
+            item_id=invoice_id,
+            allowed_types=['document']  # Apenas PDFs e documentos
+        )
+
+        # Atualizar fatura com URL da nota fiscal
+        invoice = await repo.upload_nota_fiscal(invoice_id, upload_result['url'])
+        logger.success(f"✅ Nota fiscal enviada para fatura {invoice_id}: {upload_result['filename']}")
+
+        return invoice
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Erro ao fazer upload da nota fiscal: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

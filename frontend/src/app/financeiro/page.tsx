@@ -16,10 +16,24 @@ export default function FinanceiroPage() {
   const [selectedStatus, setSelectedStatus] = useState<InvoiceStatus | 'all'>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [projects, setProjects] = useState<any[]>([]);
 
   useEffect(() => {
     fetchAll();
+    fetchProjects();
   }, [selectedStatus]);
+
+  const fetchProjects = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/projects/`);
+      if (res.ok) {
+        const data = await res.json();
+        setProjects(data);
+      }
+    } catch (err) {
+      console.error('Erro ao carregar projetos:', err);
+    }
+  };
 
   const fetchAll = async () => {
     try {
@@ -318,15 +332,20 @@ export default function FinanceiroPage() {
             >
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Projeto ID <span className="text-red-500">*</span>
+                  Projeto <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="number"
+                <select
                   name="project_id"
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="ID do projeto"
-                />
+                >
+                  <option value="">Selecione o projeto...</option>
+                  {projects.map((project) => (
+                    <option key={project.id} value={project.id}>
+                      {project.nome} - {project.client_nome || 'Sem cliente'}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>

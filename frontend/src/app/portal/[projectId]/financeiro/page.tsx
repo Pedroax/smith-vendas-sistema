@@ -45,28 +45,27 @@ export default function PortalFinanceiroPage() {
   };
 
   const handleUploadComprovante = async (invoiceId: string, file: File) => {
-    // TODO: Upload real para Supabase Storage
-    // Por enquanto, apenas simular
     try {
       setUploadingInvoiceId(invoiceId);
 
-      // Simular upload (substituir por upload real no Supabase)
-      const fakeUrl = `https://storage.supabase.co/comprovantes/${file.name}`;
+      // Upload REAL para Supabase Storage via backend
+      const formData = new FormData();
+      formData.append('file', file);
 
-      const res = await fetch(`${API_URL}/api/invoices/${invoiceId}/upload-comprovante`, {
+      const res = await fetch(`${API_URL}/api/invoices/${invoiceId}/upload-comprovante-file`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ comprovante_url: fakeUrl }),
+        body: formData, // Enviar FormData diretamente (sem Content-Type header)
       });
 
       if (res.ok) {
         showToast('Comprovante enviado! Aguardando confirmação.', 'success');
         fetchInvoices();
       } else {
-        throw new Error('Erro ao enviar comprovante');
+        const error = await res.json().catch(() => ({ detail: 'Erro ao enviar comprovante' }));
+        throw new Error(error.detail || 'Erro ao enviar comprovante');
       }
-    } catch (err) {
-      showToast('Erro ao enviar comprovante', 'error');
+    } catch (err: any) {
+      showToast(err.message || 'Erro ao enviar comprovante', 'error');
     } finally {
       setUploadingInvoiceId(null);
     }

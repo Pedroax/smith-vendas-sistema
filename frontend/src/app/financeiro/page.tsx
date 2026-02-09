@@ -265,7 +265,166 @@ export default function FinanceiroPage() {
         </div>
       </div>
 
-      {/* Modais virão aqui - CreateInvoiceModal, InvoiceDetailsModal */}
+      {/* Modal: Criar Nova Fatura */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-gray-900">Nova Fatura</h2>
+                <button
+                  onClick={() => setShowCreateModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.currentTarget);
+
+                const payload = {
+                  project_id: parseInt(formData.get('project_id') as string),
+                  descricao: formData.get('descricao') as string,
+                  valor: parseFloat(formData.get('valor') as string),
+                  desconto: parseFloat(formData.get('desconto') as string) || 0,
+                  data_vencimento: formData.get('data_vencimento') as string,
+                  metodo_pagamento: formData.get('metodo_pagamento') as string || null,
+                };
+
+                try {
+                  const res = await fetch(`${API_URL}/api/invoices/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                  });
+
+                  if (res.ok) {
+                    showToast('Fatura criada com sucesso!', 'success');
+                    setShowCreateModal(false);
+                    fetchAll();
+                  } else {
+                    const error = await res.json();
+                    throw new Error(error.detail || 'Erro ao criar fatura');
+                  }
+                } catch (err: any) {
+                  showToast(err.message || 'Erro ao criar fatura', 'error');
+                }
+              }}
+              className="p-6 space-y-4"
+            >
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Projeto ID <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  name="project_id"
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="ID do projeto"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Descrição <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  name="descricao"
+                  required
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Ex: Desenvolvimento do Site - Fase 1"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Valor (R$) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    name="valor"
+                    required
+                    step="0.01"
+                    min="0"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="5000.00"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Desconto (R$)
+                  </label>
+                  <input
+                    type="number"
+                    name="desconto"
+                    step="0.01"
+                    min="0"
+                    defaultValue="0"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Data de Vencimento <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    name="data_vencimento"
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Método de Pagamento
+                  </label>
+                  <select
+                    name="metodo_pagamento"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Selecione...</option>
+                    {Object.entries(METODO_LABELS).map(([key, label]) => (
+                      <option key={key} value={key}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                >
+                  <Plus className="w-5 h-5" />
+                  Criar Fatura
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

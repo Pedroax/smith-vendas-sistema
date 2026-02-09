@@ -9,7 +9,7 @@ from uuid import UUID
 from loguru import logger
 from supabase import Client
 
-from app.database import get_supabase_client
+from app.database import get_supabase
 from app.models.invoice import (
     Invoice,
     InvoiceCreate,
@@ -348,4 +348,4 @@ class InvoiceRepository:
 
 def get_invoice_repository() -> InvoiceRepository:
     """Retorna instância do repository"""
-    return InvoiceRepository(get_supabase_client())
+    return InvoiceRepository(get_supabase())

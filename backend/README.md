@@ -112,3 +112,4 @@ backend/
 ## 📞 Suporte
 
 Para dúvidas, abra uma issue no GitHub.
+# Railway deploy fix

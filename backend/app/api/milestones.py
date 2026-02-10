@@ -19,7 +19,7 @@ from app.services.milestone_reminder_service import (
     MilestoneReminderService,
     get_milestone_reminder_service
 )
-from app.services.evolution_service import get_evolution_service
+from app.services.uazapi_service import get_uazapi_service
 
 
 router = APIRouter(prefix="/api/milestones", tags=["milestones"])
@@ -35,8 +35,8 @@ def get_reminder_service(
 ) -> MilestoneReminderService:
     """Dependency para obter serviço de lembretes"""
     milestone_repo = MilestoneRepository(db)
-    evolution_service = get_evolution_service()
-    return get_milestone_reminder_service(milestone_repo, evolution_service)
+    uazapi_service = get_uazapi_service()
+    return get_milestone_reminder_service(milestone_repo, uazapi_service)
 
 
 @router.post("/", response_model=Milestone, status_code=201)

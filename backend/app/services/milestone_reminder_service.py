@@ -12,7 +12,7 @@ from app.models.milestone import (
     Milestone, ScheduledReminder, ReminderType, MilestoneStatus
 )
 from app.repository.milestone_repository import MilestoneRepository
-from app.services.evolution_service import EvolutionService
+from app.services.uazapi_service import UazapiService
 
 
 class MilestoneReminderService:
@@ -21,10 +21,10 @@ class MilestoneReminderService:
     def __init__(
         self,
         milestone_repo: MilestoneRepository,
-        evolution_service: EvolutionService
+        uazapi_service: UazapiService
     ):
         self.milestone_repo = milestone_repo
-        self.evolution_service = evolution_service
+        self.uazapi_service = uazapi_service
         self.admin_whatsapp = settings.admin_whatsapp
 
     async def send_daily_reminders(self) -> dict:
@@ -102,7 +102,7 @@ class MilestoneReminderService:
 
             # Enviar via WhatsApp
             if reminder.metodo == "whatsapp":
-                await self.evolution_service.send_text_message(
+                await self.uazapi_service.send_text_message(
                     phone_number=self.admin_whatsapp,
                     message=message
                 )
@@ -245,7 +245,7 @@ class MilestoneReminderService:
                 milestones
             )
 
-            await self.evolution_service.send_text_message(
+            await self.uazapi_service.send_text_message(
                 phone_number=self.admin_whatsapp,
                 message=message
             )
@@ -293,7 +293,7 @@ class MilestoneReminderService:
 
 def get_milestone_reminder_service(
     milestone_repo: MilestoneRepository,
-    evolution_service: EvolutionService
+    uazapi_service: UazapiService
 ) -> MilestoneReminderService:
     """Factory function para criar instância do serviço"""
-    return MilestoneReminderService(milestone_repo, evolution_service)
+    return MilestoneReminderService(milestone_repo, uazapi_service)

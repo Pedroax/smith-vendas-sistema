@@ -13,7 +13,7 @@ from app.services.milestone_reminder_service import (
     MilestoneReminderService,
     get_milestone_reminder_service
 )
-from app.services.evolution_service import get_evolution_service
+from app.services.uazapi_service import get_uazapi_service
 
 
 async def run_daily_reminders():
@@ -28,10 +28,10 @@ async def run_daily_reminders():
     try:
         # Criar repository e service
         milestone_repo = MilestoneRepository(db)
-        evolution_service = get_evolution_service()
+        uazapi_service = get_uazapi_service()
         reminder_service = get_milestone_reminder_service(
             milestone_repo,
-            evolution_service
+            uazapi_service
         )
 
         # Executar envio de lembretes

@@ -143,7 +143,7 @@ async def webhook_uazapi(request: Request):
         # Atualizar lead no banco
         update_data = {
             "nome": lead.nome,
-            "ultima_mensagem_ia": response_text,
+            # "ultima_mensagem_ia": response_text,  # ❌ Coluna não existe no Supabase
             "status": lead.status.value if hasattr(lead.status, 'value') else lead.status,
             "temperatura": lead.temperatura.value if hasattr(lead.temperatura, 'value') else lead.temperatura,
             "lead_score": lead.lead_score
@@ -187,7 +187,8 @@ async def webhook_uazapi(request: Request):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"❌ Erro no webhook UAZAPI: {e}", exc_info=True)
+        # ✅ Use str(e) para evitar KeyError quando e é um dict
+        logger.error(f"❌ Erro no webhook UAZAPI: {str(e)}", exc_info=True)
         return {
             "status": "error",
             "error": str(e)

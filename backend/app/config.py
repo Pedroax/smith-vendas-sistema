@@ -88,6 +88,9 @@ class Settings(BaseSettings):
     notification_email_to: str = Field(default="", env="NOTIFICATION_EMAIL_TO")
     notification_webhook_url: str = Field(default="", env="NOTIFICATION_WEBHOOK_URL")
 
+    # Lembretes de Marcos (Milestones)
+    admin_whatsapp: str = Field(default="5561998112622", env="ADMIN_WHATSAPP")
+
     @property
     def cors_origins_list(self) -> List[str]:
         """Retorna lista de origens CORS permitidas"""

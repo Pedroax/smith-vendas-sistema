@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import {
   ArrowLeft, Loader2, Plus, X, CheckCircle2, Clock,
   AlertCircle, Upload, MessageSquare, CreditCard, FileCheck,
-  TrendingUp, Bell, FolderKanban, ChevronRight, Send
+  TrendingUp, Bell, FolderKanban, ChevronRight, Send, Calendar
 } from 'lucide-react';
 import { FileUpload } from '@/components/FileUpload';
 import { useToast } from '@/contexts/ToastContext';
@@ -1194,6 +1194,15 @@ export default function AdminProjectDetailPage() {
           </div>
           {project.descricao && <p className="text-gray-500 mt-2">{project.descricao}</p>}
         </div>
+
+        {/* Action Button - Milestones */}
+        <button
+          onClick={() => router.push(`/admin-portal/projetos/${projectId}/milestones`)}
+          className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors whitespace-nowrap"
+        >
+          <Calendar className="w-4 h-4" />
+          Gerenciar Marcos
+        </button>
       </div>
 
       {/* Tabs */}

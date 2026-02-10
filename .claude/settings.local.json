@@ -81,7 +81,8 @@
       "WebFetch(domain:www.postman.com)",
       "WebFetch(domain:documenter.getpostman.com)",
       "WebFetch(domain:github.com)",
-      "WebFetch(domain:docs.uazapi.com)"
+      "WebFetch(domain:docs.uazapi.com)",
+      "Bash(grep:*)"
     ]
   }
 }

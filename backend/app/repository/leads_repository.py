@@ -378,6 +378,12 @@ class LeadsRepository:
                 .order("timestamp", desc=False)
                 .execute()
             )
+        except Exception as e:
+            logger.error(f"Erro ao buscar mensagens do lead {lead_id}: {e}")
+            # Se tabela não existir, retornar lista vazia (não crashar)
+            return []
+
+        try:
 
             if not response.data:
                 return []

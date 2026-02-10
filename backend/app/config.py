@@ -22,10 +22,15 @@ class Settings(BaseSettings):
     openai_model: str = Field(default="gpt-4o", env="OPENAI_MODEL")
     openai_temperature: float = Field(default=0.7, env="OPENAI_TEMPERATURE")
 
-    # Evolution API (WhatsApp)
+    # Evolution API (WhatsApp) - DEPRECATED
     evolution_api_url: str = Field(..., env="EVOLUTION_API_URL")
     evolution_api_key: str = Field(..., env="EVOLUTION_API_KEY")
     evolution_instance_name: str = Field(default="smith", env="EVOLUTION_INSTANCE_NAME")
+
+    # UAZAPI (WhatsApp) - NOVO
+    uazapi_base_url: str = Field(default="https://api-ax.uazapi.com", env="UAZAPI_BASE_URL")
+    uazapi_instance_id: str = Field(default="smith", env="UAZAPI_INSTANCE_ID")
+    uazapi_token: str = Field(..., env="UAZAPI_TOKEN")
 
     # Supabase
     supabase_url: str = Field(..., env="SUPABASE_URL")

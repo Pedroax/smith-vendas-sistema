@@ -77,7 +77,11 @@
       "Bash(for file in aprovacoes/page.tsx configuracoes/page.tsx entregas/page.tsx pagamentos/page.tsx timeline/page.tsx page.tsx)",
       "Bash(do sed -i \"s/''portal_token''/''portal_access_token''/g\" \"$file\")",
       "Bash(echo:*)",
-      "Bash(done)"
+      "Bash(done)",
+      "WebFetch(domain:www.postman.com)",
+      "WebFetch(domain:documenter.getpostman.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:docs.uazapi.com)"
     ]
   }
 }

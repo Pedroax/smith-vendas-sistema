@@ -300,11 +300,31 @@ class SmithAgent:
     # ----------------
 
     def handle_new_lead(self, state: AgentState) -> AgentState:
-        """Node: Contato inicial com novo lead"""
+        """Node: Contato inicial com novo lead OU roteamento baseado em stage"""
         try:
             lead = state["lead"]
             messages = state["messages"]
+            current_stage = state.get("current_stage", None)
 
+            # ✅ ROUTER: Se lead já está em conversa, rotear para node apropriado
+            if current_stage and current_stage != "novo":
+                logger.info(f"Lead {lead.nome} já em conversa (stage={current_stage}), roteando...")
+
+                # Rotear baseado no status do lead (valores do enum LeadStatus)
+                if current_stage in ["contato_inicial", "qualificando"]:
+                    state["next_action"] = "qualify"
+                elif current_stage == "qualificado":
+                    state["next_action"] = "qualify"  # Lead qualificado mas ainda em conversa
+                elif current_stage == "agendamento_marcado":
+                    state["next_action"] = "end"  # Já agendado, nada a fazer
+                elif current_stage == "perdido":
+                    state["next_action"] = "end"  # Lead perdido, nada a fazer
+                else:
+                    state["next_action"] = "qualify"  # Fallback
+
+                return state
+
+            # ✅ NOVO LEAD: Processar saudação inicial
             # System prompt
             system_msg = SystemMessage(content=SYSTEM_PROMPTS["novo"])
 
@@ -319,7 +339,7 @@ class SmithAgent:
             state["messages"] = messages
             state["lead"] = lead
             state["current_stage"] = "contato_inicial"
-            state["next_action"] = "qualify"
+            state["next_action"] = "end"  # ✅ FIX: Terminar após saudação (esperar resposta)
 
             logger.info(f"Contato inicial com {lead.nome}")
             return state
@@ -430,7 +450,8 @@ Decisor: {'Sim' if lead.qualification_data and lead.qualification_data.is_decisi
             if proximo_passo == "completo":
                 next_action = "check_qualification"
             else:
-                next_action = "qualify"  # Continua coletando informações
+                # ✅ FIX: Terminar após gerar pergunta (esperar resposta do usuário)
+                next_action = "end"  # Webhook enviará resposta e aguardará próxima mensagem
 
             state["messages"] = messages
             state["lead"] = lead
@@ -493,7 +514,7 @@ Score: {score}/100
 
                 state["lead"] = lead
                 state["current_stage"] = "qualificado"
-                state["next_action"] = "await_choice"
+                state["next_action"] = "end"  # ✅ FIX: Terminar após oferecer opções (esperar escolha do lead)
                 state["show_calendar"] = True  # Sinalizar para mostrar calendário no frontend
 
                 logger.success(f"✅ {lead.nome} QUALIFICADO (Score: {score}), mostrando calendário")
@@ -513,7 +534,7 @@ Score: {score}/100
                 state["messages"].append(AIMessage(content=disqualification_msg))
 
                 state["lead"] = lead
-                state["current_stage"] = "disqualified"
+                state["current_stage"] = "perdido"  # ✅ Usar valor correto do enum LeadStatus
                 state["next_action"] = "end"
 
                 logger.warning(f"❌ {lead.nome} NÃO QUALIFICADO (Score: {score}). Motivo: {reason}")
@@ -546,8 +567,8 @@ Score: {score}/100
 
                 # ROI gerado (envio será feito pelo webhook se source = whatsapp)
                 state["lead"] = lead
-                state["current_stage"] = "roi_presented"
-                state["next_action"] = "schedule"
+                state["current_stage"] = "qualificado"  # ✅ Mantém qualificado (ROI é parte da qualificação)
+                state["next_action"] = "end"  # ✅ Terminar após enviar ROI (esperar resposta)
 
                 logger.success(f"ROI gerado para {lead.nome}")
 
@@ -576,8 +597,8 @@ Score: {score}/100
 
             state["messages"] = messages
             state["lead"] = lead
-            state["current_stage"] = "scheduling"
-            state["next_action"] = "confirm_meeting"
+            state["current_stage"] = "agendamento_marcado"  # ✅ Usar valor correto do enum
+            state["next_action"] = "end"  # ✅ FIX: Terminar após oferecer horários (esperar escolha)
 
             logger.info(f"Agendando reunião para {lead.nome}")
             return state

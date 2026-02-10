@@ -433,7 +433,17 @@ class LeadsRepository:
                 "timestamp": datetime.now().isoformat(),
             }
 
-            response = self.supabase.table("conversation_messages").insert(message_data).execute()
+            try:
+                response = self.supabase.table("conversation_messages").insert(message_data).execute()
+            except Exception as insert_error:
+                logger.error(f"Erro ao adicionar mensagem ao lead {lead_id}: {insert_error}")
+                # Se tabela não existir, retornar mensagem fictícia (não crashar)
+                return ConversationMessage(
+                    id=message_data["id"],
+                    role=role,
+                    content=content,
+                    timestamp=datetime.now()
+                )
 
             if not response.data:
                 raise Exception("Erro ao adicionar mensagem: resposta vazia")

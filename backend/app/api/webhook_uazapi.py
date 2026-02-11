@@ -105,6 +105,18 @@ async def webhook_uazapi(request: Request):
 
         logger.info(f"💬 Mensagem de {push_name} ({phone}): {message_text[:50]}...")
 
+        # 🧪 COMANDO DE TESTE: /delete - Resetar memória completamente
+        if message_text.strip().lower() == "/delete":
+            logger.warning(f"🗑️ Comando /delete recebido de {push_name} ({phone})")
+            asyncio.create_task(
+                handle_delete_command(phone, push_name)
+            )
+            return {
+                "status": "command_executed",
+                "command": "delete",
+                "phone": phone
+            }
+
         # 🔥 ADICIONAR AO BUFFER (não aguarda processamento)
         # O debouncer processará após 2.5s de silêncio
         asyncio.create_task(
@@ -275,6 +287,96 @@ async def get_or_create_lead(phone: str, name: str) -> Lead:
     logger.success(f"✨ Novo lead criado via UAZAPI: {name} ({lead_id})")
 
     return created_lead
+
+
+async def handle_delete_command(phone: str, push_name: str):
+    """
+    Processa comando /delete - Reseta memória e dados do lead
+
+    Este comando é útil para testes e permite recomeçar
+    uma conversa do zero, limpando todo histórico.
+
+    Args:
+        phone: Telefone do lead (sem @s.whatsapp.net)
+        push_name: Nome do contato
+    """
+    try:
+        logger.info(f"🗑️ Executando comando /delete para {push_name} ({phone})")
+
+        # Buscar lead existente
+        existing_lead = await repository.get_by_telefone(phone)
+
+        if not existing_lead:
+            # Lead não existe, apenas enviar mensagem de "já está limpo"
+            confirmation_msg = (
+                "✅ SEM DADOS PARA LIMPAR!\n\n"
+                "🆕 Você ainda não tem histórico conosco.\n"
+                "Pode começar uma conversa nova agora!"
+            )
+            uazapi_service.send_text_message(phone, confirmation_msg)
+            logger.info(f"⚪ Lead {phone} não existe - nada para deletar")
+            return
+
+        lead_id = existing_lead.id
+        lead_nome = existing_lead.nome
+
+        logger.info(f"🔍 Lead encontrado: {lead_nome} (ID: {lead_id})")
+
+        # 🧹 LIMPAR HISTÓRICO DE CONVERSAS (conversation_messages)
+        from app.services.conversation_memory import SupabaseChatMemory
+
+        memory = SupabaseChatMemory(lead_id=lead_id)
+        message_count = await memory.get_message_count()
+
+        await memory.clear_history()
+        logger.success(f"🗑️ {message_count} mensagens deletadas do histórico")
+
+        # 🔄 RESETAR DADOS DO LEAD
+        reset_data = {
+            "status": LeadStatus.NOVO.value,
+            "temperatura": LeadTemperature.FRIO.value,
+            "lead_score": 0,
+            "qualification_data": None,
+            "roi_analysis": None,
+            "ultima_interacao": None,
+        }
+
+        await repository.update(lead_id, reset_data)
+        logger.success(f"♻️ Lead {lead_nome} resetado para estado inicial")
+
+        # 📤 ENVIAR MENSAGEM DE CONFIRMAÇÃO
+        confirmation_msg = (
+            "✅ MEMÓRIA RESETADA COMPLETAMENTE!\n\n"
+            "🧹 Todo seu histórico foi limpo:\n"
+            f"   • {message_count} conversas anteriores\n"
+            "   • Mensagens\n"
+            "   • Agendamentos\n"
+            "   • Dados salvos\n\n"
+            "🆕 Podemos começar uma nova conversa do zero!"
+        )
+
+        success = uazapi_service.send_text_message(phone, confirmation_msg)
+
+        if success:
+            logger.success(
+                f"✅ Comando /delete executado com sucesso para {lead_nome} "
+                f"({message_count} mensagens deletadas)"
+            )
+        else:
+            logger.error(f"❌ Falha ao enviar confirmação do /delete")
+
+    except Exception as e:
+        logger.error(
+            f"❌ Erro ao processar comando /delete para {phone}: {str(e)}",
+            exc_info=True
+        )
+
+        # Enviar mensagem de erro
+        error_msg = (
+            "❌ Erro ao limpar memória.\n\n"
+            "Por favor, tente novamente em alguns instantes."
+        )
+        uazapi_service.send_text_message(phone, error_msg)
 
 
 @router.get("/uazapi/buffer/stats")

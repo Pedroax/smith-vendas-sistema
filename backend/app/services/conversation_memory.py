@@ -7,7 +7,7 @@ from datetime import datetime
 from loguru import logger
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 
-from app.database import get_supabase_client
+from app.database import get_supabase
 
 
 class SupabaseChatMemory:
@@ -29,7 +29,7 @@ class SupabaseChatMemory:
         """
         self.lead_id = str(lead_id)  # Garantir que é string
         self.max_messages = max_messages
-        self.supabase = get_supabase_client()
+        self.supabase = get_supabase()
 
     async def get_messages(self) -> List[BaseMessage]:
         """

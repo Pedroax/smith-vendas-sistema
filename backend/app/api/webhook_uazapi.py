@@ -5,13 +5,16 @@ Processa mensagens recebidas via UAZAPI e aciona o agente Smith com LangGraph
 Este webhook:
 1. Recebe payload UAZAPI
 2. Converte para formato Evolution API (compatibilidade)
-3. Processa com smith_agent (LangGraph) - QUALIFICAÇÃO AUTOMÁTICA
-4. Envia resposta via UAZAPI
+3. Adiciona mensagem ao buffer (debouncer)
+4. Retorna 200 OK imediatamente
+5. Processa em background após X segundos de silêncio
+6. Envia resposta via UAZAPI
 """
 from fastapi import APIRouter, Request, HTTPException
 from loguru import logger
 from datetime import datetime
 import uuid
+import asyncio
 
 from app.models.lead import (
     Lead,
@@ -27,6 +30,7 @@ from app.services.uazapi_adapter import (
     adapt_uazapi_webhook,
     extract_phone_from_jid
 )
+from app.services.message_debouncer import get_message_debouncer
 from app.agent import smith_agent, smith_graph, AgentState
 from langchain_core.messages import HumanMessage, AIMessage
 from app.repository.leads_repository import LeadsRepository
@@ -36,6 +40,7 @@ router = APIRouter()
 # Instanciar serviços
 repository = LeadsRepository()
 uazapi_service = get_uazapi_service()
+message_debouncer = get_message_debouncer(wait_seconds=2.5)
 
 
 @router.post("/uazapi")
@@ -47,9 +52,9 @@ async def webhook_uazapi(request: Request):
     1. Recebe webhook UAZAPI
     2. Converte para formato Evolution (adaptador)
     3. Extrai dados (phone, message, name)
-    4. Cria/atualiza lead no banco
-    5. Processa com smith_agent (LangGraph) - QUALIFICAÇÃO AUTOMÁTICA
-    6. Agente responde automaticamente via UAZAPI
+    4. Adiciona mensagem ao buffer (debouncer)
+    5. Retorna 200 OK IMEDIATAMENTE
+    6. Processamento acontece em background após X segundos de silêncio
     """
     try:
         # Receber payload
@@ -99,28 +104,73 @@ async def webhook_uazapi(request: Request):
 
         logger.info(f"💬 Mensagem de {push_name} ({phone}): {message_text[:50]}...")
 
+        # 🔥 ADICIONAR AO BUFFER (não aguarda processamento)
+        # O debouncer processará após 2.5s de silêncio
+        asyncio.create_task(
+            message_debouncer.add_message(
+                phone=phone,
+                message=message_text,
+                callback=process_buffered_message,
+                push_name=push_name
+            )
+        )
+
+        # ✅ RETORNAR IMEDIATAMENTE (não bloqueia webhook)
+        return {
+            "status": "buffered",
+            "phone": phone,
+            "message_length": len(message_text),
+            "buffer_wait_seconds": message_debouncer.wait_seconds
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        # ✅ Use str(e) para evitar KeyError quando e é um dict
+        logger.error(f"❌ Erro no webhook UAZAPI: {str(e)}", exc_info=True)
+        return {
+            "status": "error",
+            "error": str(e)
+        }
+
+
+async def process_buffered_message(phone: str, combined_message: str, push_name: str):
+    """
+    Processa mensagem(ns) combinada(s) após buffer
+
+    Esta função é chamada pelo debouncer após X segundos de silêncio.
+    Recebe todas as mensagens enviadas pelo usuário combinadas com \\n
+
+    Args:
+        phone: Telefone do usuário (sem @s.whatsapp.net)
+        combined_message: Mensagens combinadas separadas por \\n
+        push_name: Nome do contato
+    """
+    try:
+        logger.info(f"🔄 Processando mensagem buffered de {push_name} ({phone[:12]}...)")
+
         # Buscar ou criar lead
         lead = await get_or_create_lead(phone, push_name)
 
-        # Adicionar mensagem do usuário ao banco
+        # Adicionar mensagem combinada ao banco
         await repository.add_conversation_message(
             lead_id=lead.id,
             role="user",
-            content=message_text
+            content=combined_message
         )
 
         # Adicionar mensagem ao histórico (em memória para o agente processar)
         user_message = ConversationMessage(
             id=str(uuid.uuid4()),
             role="user",
-            content=message_text,
+            content=combined_message,
             timestamp=datetime.now()
         )
         lead.conversation_history.append(user_message)
         lead.ultima_interacao = datetime.now()
 
         # 🤖 PROCESSAR COM O AGENTE SMITH (LangGraph)
-        response_text, show_calendar = await process_with_agent(lead, message_text)
+        response_text, show_calendar = await process_with_agent(lead, combined_message)
 
         # Adicionar resposta da IA ao histórico
         ai_message = ConversationMessage(
@@ -130,7 +180,6 @@ async def webhook_uazapi(request: Request):
             timestamp=datetime.now()
         )
         lead.conversation_history.append(ai_message)
-        lead.ultima_mensagem_ia = response_text
         lead.updated_at = datetime.now()
 
         # Salvar mensagem no banco
@@ -143,7 +192,6 @@ async def webhook_uazapi(request: Request):
         # Atualizar lead no banco
         update_data = {
             "nome": lead.nome,
-            # "ultima_mensagem_ia": response_text,  # ❌ Coluna não existe no Supabase
             "status": lead.status.value if hasattr(lead.status, 'value') else lead.status,
             "temperatura": lead.temperatura.value if hasattr(lead.temperatura, 'value') else lead.temperatura,
             "lead_score": lead.lead_score
@@ -165,34 +213,16 @@ async def webhook_uazapi(request: Request):
 
         if success:
             logger.success(f"✅ Resposta enviada via UAZAPI para {push_name}")
+            if show_calendar:
+                logger.info(f"📅 Lead qualificado - calendário disponível")
         else:
             logger.error(f"❌ Falha ao enviar resposta via UAZAPI")
 
-        response_data = {
-            "status": "processed",
-            "lead_id": lead.id,
-            "lead_status": lead.status,
-            "lead_score": lead.lead_score,
-            "send_success": success
-        }
-
-        # Adicionar sinalizador de calendário se necessário
-        if show_calendar:
-            response_data["show_calendar"] = True
-            response_data["calendar_url"] = "https://calendly.com/pedrohfmachado/agende-seu-horario"
-            logger.info(f"📅 Lead qualificado - pode mostrar calendário")
-
-        return response_data
-
-    except HTTPException:
-        raise
     except Exception as e:
-        # ✅ Use str(e) para evitar KeyError quando e é um dict
-        logger.error(f"❌ Erro no webhook UAZAPI: {str(e)}", exc_info=True)
-        return {
-            "status": "error",
-            "error": str(e)
-        }
+        logger.error(
+            f"❌ Erro ao processar mensagem buffered de {phone[:12]}...: {str(e)}",
+            exc_info=True
+        )
 
 
 async def get_or_create_lead(phone: str, name: str) -> Lead:
@@ -244,6 +274,25 @@ async def get_or_create_lead(phone: str, name: str) -> Lead:
     logger.success(f"✨ Novo lead criado via UAZAPI: {name} ({lead_id})")
 
     return created_lead
+
+
+@router.get("/uazapi/buffer/stats")
+async def get_buffer_stats():
+    """
+    Retorna estatísticas do buffer de mensagens
+
+    Útil para debug e monitoramento
+    """
+    stats = message_debouncer.get_stats()
+    return {
+        "status": "ok",
+        "debouncer": {
+            "wait_seconds": message_debouncer.wait_seconds,
+            "active_timers": stats["active_timers"],
+            "pending_messages": stats["pending_messages"],
+            "phones_waiting": stats["phones_waiting"]
+        }
+    }
 
 
 async def process_with_agent(lead: Lead, message: str) -> tuple[str, bool]:

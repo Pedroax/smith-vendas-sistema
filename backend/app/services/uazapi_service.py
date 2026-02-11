@@ -39,7 +39,8 @@ class UazapiService:
             phone_clean = phone_number.replace('@s.whatsapp.net', '')
 
             # Endpoint da UAZAPI para enviar mensagem
-            url = f"{self.base_url}/v1/chats/send-text"
+            # Testando endpoint correto baseado na documentação UAZAPI
+            url = f"{self.base_url}/instance/{self.instance_id}/send-text"
 
             # Headers com autenticação
             headers = {
@@ -47,9 +48,8 @@ class UazapiService:
                 "Authorization": f"Bearer {self.token}"
             }
 
-            # Payload no formato UAZAPI
+            # Payload no formato UAZAPI (sem instance no body, já está na URL)
             payload = {
-                "instance": self.instance_id,
                 "phone": phone_clean,
                 "message": message
             }
@@ -85,7 +85,7 @@ class UazapiService:
         try:
             phone_clean = phone_number.replace('@s.whatsapp.net', '')
 
-            url = f"{self.base_url}/v1/chats/send-audio"
+            url = f"{self.base_url}/instance/{self.instance_id}/send-audio"
 
             headers = {
                 "Content-Type": "application/json",
@@ -93,7 +93,6 @@ class UazapiService:
             }
 
             payload = {
-                "instance": self.instance_id,
                 "phone": phone_clean,
                 "audio": audio_url
             }
@@ -135,7 +134,7 @@ class UazapiService:
         try:
             phone_clean = phone_number.replace('@s.whatsapp.net', '')
 
-            url = f"{self.base_url}/v1/chats/send-document"
+            url = f"{self.base_url}/instance/{self.instance_id}/send-document"
 
             headers = {
                 "Content-Type": "application/json",
@@ -143,7 +142,6 @@ class UazapiService:
             }
 
             payload = {
-                "instance": self.instance_id,
                 "phone": phone_clean,
                 "document": document_url
             }
@@ -183,7 +181,7 @@ class UazapiService:
         try:
             phone_clean = phone_number.replace('@s.whatsapp.net', '')
 
-            url = f"{self.base_url}/v1/chats/send-image"
+            url = f"{self.base_url}/instance/{self.instance_id}/send-image"
 
             headers = {
                 "Content-Type": "application/json",
@@ -191,7 +189,6 @@ class UazapiService:
             }
 
             payload = {
-                "instance": self.instance_id,
                 "phone": phone_clean,
                 "image": image_url
             }

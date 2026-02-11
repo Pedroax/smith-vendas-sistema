@@ -31,6 +31,7 @@ from app.services.uazapi_adapter import (
     extract_phone_from_jid
 )
 from app.services.message_debouncer import get_message_debouncer
+from app.services.conversation_memory import load_conversation_history
 from app.agent import smith_agent, smith_graph, AgentState
 from langchain_core.messages import HumanMessage, AIMessage
 from app.repository.leads_repository import LeadsRepository
@@ -300,6 +301,7 @@ async def process_with_agent(lead: Lead, message: str) -> tuple[str, bool]:
     Processa mensagem com o agente Smith (LangGraph)
 
     Este método usa o LangGraph completo com:
+    - Memória persistente (Supabase) - últimas 20 mensagens
     - Qualificação automática
     - Cálculo de score
     - Agendamento automático
@@ -314,13 +316,20 @@ async def process_with_agent(lead: Lead, message: str) -> tuple[str, bool]:
     """
     show_calendar = False
     try:
-        # Converter histórico de conversa para mensagens do LangChain
-        messages = []
-        for msg in lead.conversation_history:
-            if msg.role == "user":
-                messages.append(HumanMessage(content=msg.content))
-            else:
-                messages.append(AIMessage(content=msg.content))
+        # 🧠 CARREGAR HISTÓRICO DO BANCO (últimas 20 mensagens)
+        logger.info(f"📚 Carregando histórico de conversas para lead {lead.id}")
+        messages = await load_conversation_history(
+            lead_id=lead.id,
+            max_messages=20  # Últimas 20 mensagens (10 trocas)
+        )
+
+        # Adicionar mensagem atual ao histórico (já foi salva no banco)
+        messages.append(HumanMessage(content=message))
+
+        logger.info(
+            f"🔄 Processando com {len(messages)} mensagens de contexto "
+            f"(lead: {lead.nome})"
+        )
 
         # Montar estado inicial para o LangGraph
         initial_state = AgentState(

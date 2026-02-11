@@ -35,31 +35,34 @@ class UazapiService:
             True se sucesso, False se erro
         """
         try:
-            # Normalizar telefone (remover @s.whatsapp.net se vier)
-            phone_clean = phone_number.replace('@s.whatsapp.net', '')
+            # Garantir que telefone tenha @s.whatsapp.net (formato JID)
+            if '@s.whatsapp.net' not in phone_number:
+                phone_jid = f"{phone_number}@s.whatsapp.net"
+            else:
+                phone_jid = phone_number
 
-            # Endpoint da UAZAPI para enviar mensagem
-            # Formato padrão de APIs WhatsApp (similar a Evolution API)
-            url = f"{self.base_url}/message/sendText/{self.instance_id}"
+            # Endpoint CORRETO da UAZAPI (conforme documentação oficial)
+            url = f"{self.base_url}/send/text"
 
-            # Headers com autenticação
+            # Headers com autenticação (token direto, NÃO Bearer!)
             headers = {
                 "Content-Type": "application/json",
-                "Authorization": f"Bearer {self.token}"
+                "Accept": "application/json",
+                "token": self.token
             }
 
-            # Payload no formato padrão de APIs WhatsApp
+            # Payload no formato UAZAPI oficial
             payload = {
-                "number": phone_clean,
+                "number": phone_jid,
                 "text": message
             }
 
-            logger.info(f"📤 Enviando via UAZAPI para {phone_clean[:8]}...")
+            logger.info(f"📤 Enviando via UAZAPI para {phone_jid[:12]}...")
 
             response = requests.post(url, json=payload, headers=headers, timeout=30)
 
             if response.status_code == 200:
-                logger.success(f"✅ Mensagem enviada para {phone_clean}")
+                logger.success(f"✅ Mensagem enviada para {phone_jid}")
                 return True
             else:
                 logger.error(

@@ -39,8 +39,8 @@ class UazapiService:
             phone_clean = phone_number.replace('@s.whatsapp.net', '')
 
             # Endpoint da UAZAPI para enviar mensagem
-            # Testando endpoint correto baseado na documentação UAZAPI
-            url = f"{self.base_url}/instance/{self.instance_id}/send-text"
+            # Formato padrão de APIs WhatsApp (similar a Evolution API)
+            url = f"{self.base_url}/message/sendText/{self.instance_id}"
 
             # Headers com autenticação
             headers = {
@@ -48,10 +48,10 @@ class UazapiService:
                 "Authorization": f"Bearer {self.token}"
             }
 
-            # Payload no formato UAZAPI (sem instance no body, já está na URL)
+            # Payload no formato padrão de APIs WhatsApp
             payload = {
-                "phone": phone_clean,
-                "message": message
+                "number": phone_clean,
+                "text": message
             }
 
             logger.info(f"📤 Enviando via UAZAPI para {phone_clean[:8]}...")
@@ -85,7 +85,7 @@ class UazapiService:
         try:
             phone_clean = phone_number.replace('@s.whatsapp.net', '')
 
-            url = f"{self.base_url}/instance/{self.instance_id}/send-audio"
+            url = f"{self.base_url}/message/sendAudio/{self.instance_id}"
 
             headers = {
                 "Content-Type": "application/json",
@@ -93,7 +93,7 @@ class UazapiService:
             }
 
             payload = {
-                "phone": phone_clean,
+                "number": phone_clean,
                 "audio": audio_url
             }
 
@@ -134,7 +134,7 @@ class UazapiService:
         try:
             phone_clean = phone_number.replace('@s.whatsapp.net', '')
 
-            url = f"{self.base_url}/instance/{self.instance_id}/send-document"
+            url = f"{self.base_url}/message/sendMedia/{self.instance_id}"
 
             headers = {
                 "Content-Type": "application/json",
@@ -142,8 +142,9 @@ class UazapiService:
             }
 
             payload = {
-                "phone": phone_clean,
-                "document": document_url
+                "number": phone_clean,
+                "mediaUrl": document_url,
+                "mediatype": "document"
             }
 
             if filename:
@@ -181,7 +182,7 @@ class UazapiService:
         try:
             phone_clean = phone_number.replace('@s.whatsapp.net', '')
 
-            url = f"{self.base_url}/instance/{self.instance_id}/send-image"
+            url = f"{self.base_url}/message/sendMedia/{self.instance_id}"
 
             headers = {
                 "Content-Type": "application/json",
@@ -189,8 +190,9 @@ class UazapiService:
             }
 
             payload = {
-                "phone": phone_clean,
-                "image": image_url
+                "number": phone_clean,
+                "mediaUrl": image_url,
+                "mediatype": "image"
             }
 
             if caption:

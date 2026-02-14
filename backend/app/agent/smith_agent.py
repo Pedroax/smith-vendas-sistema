@@ -633,7 +633,12 @@ Score: {score}/100
 IMPORTANTE: Use EXATAMENTE estes horários disponíveis do Google Calendar:
 {slots_text}
 
-NÃO invente horários! Use apenas os listados acima."""
+REGRAS CRÍTICAS:
+- NÃO invente horários! Use apenas os listados acima
+- SEMPRE peça o email do lead junto com a escolha do horário
+- NÃO invente emails como "pedro@teste.com" ou similares
+- NÃO crie links falsos ou mencione emails que o lead não forneceu
+- AGUARDE o lead informar horário E email antes de confirmar qualquer agendamento"""
 
             system_msg = SystemMessage(content=system_prompt)
 

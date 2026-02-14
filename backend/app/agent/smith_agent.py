@@ -382,66 +382,105 @@ class SmithAgent:
             contexto_estrategico = ""
 
             if not lead.email:
-                proximo_passo = "tamanho_equipe"
-                contexto_estrategico = f"""SITUAÇÃO ATUAL: Você acabou de capturar o nome ({lead.nome}).
+                proximo_passo = "contexto_operacional"
+                contexto_estrategico = f"""SITUAÇÃO ATUAL: Nome capturado ({lead.nome}).
 
-PRÓXIMO PASSO ESTRATÉGICO: Entender o contexto operacional dele para personalizar a conversa e demonstrar valor específico.
+PRÓXIMO PASSO: Entender contexto operacional DE FORMA NATURAL.
 
-PERGUNTE (de forma consultiva, não mecânica): "{lead.nome}, para entender melhor como podemos ajudar, me conta: quantas pessoas compõem seu time de vendas atualmente?"
+PERGUNTE DE FORMA CONSULTIVA (juntar 2 perguntas):
+"{lead.nome}, pra eu entender melhor como posso te ajudar: quantas pessoas você tem no time de vendas e qual a faixa de faturamento mensal da empresa?"
 
-APÓS A RESPOSTA: Personalize com um insight baseado no tamanho da equipe (1-3, 4-10, ou 11+)."""
+IMPORTANTE:
+- Tom: consultivo, não interrogatório
+- Se ele responder apenas uma parte, pegar a outra naturalmente
+- Personalizar com insight baseado no porte (pequeno/médio/grande)
 
             elif not lead.qualification_data or not lead.qualification_data.faturamento_anual:
                 proximo_passo = "faturamento"
-                contexto_estrategico = f"""SITUAÇÃO ATUAL: Nome capturado ({lead.nome}).
+                contexto_estrategico = f"""SITUAÇÃO ATUAL: Tamanho de equipe capturado, faltando faturamento.
 
-PRÓXIMO PASSO ESTRATÉGICO: Qualificar o porte da empresa para propor a solução mais adequada.
+PRÓXIMO PASSO: Completar qualificação de porte.
 
-PERGUNTE (de forma consultiva): "E qual é a faixa de faturamento mensal da sua empresa? Essa informação é importante porque temos estratégias específicas para cada perfil de negócio."
+PERGUNTE DE FORMA LEVE:
+"Legal, {lead.nome}! E vocês faturam quanto por mês? Isso me ajuda a calcular o impacto exato que conseguimos gerar pra vocês."
 
-IMPORTANTE: Se ele mostrar resistência, explique o PORQUÊ dessa pergunta."""
+TOM: Direto mas justificado (mostra PORQUÊ importa)"""
 
             elif not lead.qualification_data or lead.qualification_data.is_decision_maker is None:
-                proximo_passo = "decisor"
-                contexto_estrategico = f"""SITUAÇÃO ATUAL: Nome e faturamento capturados.
+                proximo_passo = "decisor_e_dor"
+                contexto_estrategico = f"""SITUAÇÃO ATUAL: Porte mapeado.
 
-PRÓXIMO PASSO ESTRATÉGICO: Identificar se ele pode tomar a decisão ou precisa envolver mais pessoas.
+PRÓXIMO PASSO CRÍTICO: Identificar decisor E explorar a dor (JUNTAR PERGUNTAS).
 
-PERGUNTE (de forma consultiva): "Obrigado pela transparência, {lead.nome}. Uma pergunta importante: você é o responsável pelas decisões de implementação de tecnologia na empresa?"
+PERGUNTE DE FORMA DIRETA:
+"{lead.nome}, você é quem decide sobre implementação de tecnologia aí? E qual o principal problema que tá te impedindo de crescer mais rápido agora?"
 
-CONTEXTO: Nossa agenda está apertada, então precisamos garantir que a pessoa certa participa da reunião."""
+TOM: Direto, consultivo, focado em DOR
+IMPORTANTE: Esta é a pergunta mais importante! A dor vai definir todo o pitch."""
 
             elif not lead.qualification_data or not lead.qualification_data.maior_desafio:
                 proximo_passo = "dor_principal"
-                contexto_estrategico = f"""SITUAÇÃO ATUAL: Lead com perfil qualificável (faturamento + decisor OK).
+                contexto_estrategico = f"""SITUAÇÃO ATUAL: Decisor identificado.
 
-PRÓXIMO PASSO CRÍTICO: MAPEAR A DOR PRINCIPAL antes de qualificar.
+PRÓXIMO PASSO CRÍTICO: Mapear DOR e criar urgência.
 
-PERGUNTE (de forma profunda): "{lead.nome}, qual é o principal desafio que vocês enfrentam hoje no processo comercial? O que está impedindo vocês de crescerem mais rapidamente?"
+SE DECISOR = SIM:
+"Perfeito, {lead.nome}! Qual o principal problema que tá atrapalhando vocês agora? Perda de leads? Atendimento bagunçado? Time sobrecarregado?"
 
-IMPORTANTE: Essa é a pergunta MAIS IMPORTANTE. A resposta vai determinar todo o pitch.
+SE DECISOR = NÃO:
+"Entendi. E qual o principal gargalo que você vê hoje? Perda de leads? Processos manuais?"
 
-APÓS A RESPOSTA: Use cases específicos baseados na dor:
-- Falta de leads → "A AutomateX ajudou a Bateral a aumentar leads qualificados em 35% com nosso agente de IA para Instagram Direct."
-- Baixa conversão → "LC Baterias enfrentava o mesmo problema e aumentou conversão em 37% após implementar follow-up automatizado."
-- Processos manuais → "Dunkin' eliminou 85% das tarefas manuais e gerou 45% mais vendas."
-- Time sobrecarregado → "Com automação, times conseguem trabalhar 30% mais leads sem contratar."
+APÓS CAPTURAR A DOR, ADICIONE GATILHO EMOCIONAL + CASO ESPECÍFICO:
 
-NÃO QUALIFIQUE AINDA! Primeiro explore a dor."""
+Exemplos baseados na dor:
+- **Atendimento bagunçado/perda de leads**: "Cara, isso dói né? Trabalhar tanto pra captar e perder no atendimento... Tive um cliente com time de 18 pessoas que tava no mesmo barco. Em 30 dias cortou 60% das perdas."
+
+- **Baixa conversão**: "Entendo, {lead.nome}. Um dos nossos clientes aumentou 37% de conversão só organizando o follow-up com IA. Imagina quanto isso representaria pra vocês?"
+
+- **Processos manuais**: "Time perdendo tempo com operacional é dinheiro jogado fora. Dunkin' eliminou 85% das tarefas manuais e aumentou 45% as vendas."
+
+TOM: Empático, urgente, específico
 
             elif not lead.qualification_data or not lead.qualification_data.urgency:
-                proximo_passo = "urgencia"
+                proximo_passo = "urgencia_e_agendamento"
                 contexto_estrategico = f"""SITUAÇÃO ATUAL: Dor mapeada, lead engajado.
 
-PRÓXIMO PASSO ESTRATÉGICO: Entender timing para priorizar corretamente.
+PRÓXIMO PASSO: Entender urgência e JÁ PARTIR PRO AGENDAMENTO.
 
-PERGUNTE: "E qual o nível de urgência para a implementação? Vocês estão buscando iniciar nas próximas semanas ou é algo planejado para os próximos meses?"
+PERGUNTE DE FORMA DIRETA:
+"Isso é urgente pra vocês ou dá pra deixar pros próximos meses?"
 
-APÓS A RESPOSTA: Agora sim você pode qualificar com awareness."""
+SE RESPONDER "URGENTE" / "RÁPIDO" / "AGORA":
+→ PARTA IMEDIATAMENTE PRO AGENDAMENTO (veja seção AGENDAMENTO abaixo)
+
+SE RESPONDER "PRÓXIMOS MESES" / "SEM PRESSA":
+→ Qualifique normalmente mas com menos prioridade
+
+⚠️ IMPORTANTE: Se lead está qualificado (decisor + dor + urgência), NÃO PERGUNTE "posso te ajudar com mais alguma coisa?"
+→ VÁ DIRETO PARA O AGENDAMENTO!"""
 
             else:
-                proximo_passo = "completo"
-                contexto_estrategico = "Todas as informações coletadas incluindo DOR. Prossiga para qualificação final com awareness."
+                # LEAD TOTALMENTE QUALIFICADO - PARTIR PRO AGENDAMENTO!
+                proximo_passo = "partir_agendamento"
+                contexto_estrategico = f"""🎯 LEAD COMPLETAMENTE QUALIFICADO!
+
+✅ Decisor: {'SIM' if lead.qualification_data and lead.qualification_data.is_decision_maker else 'NÃO'}
+✅ Dor mapeada: {lead.qualification_data.maior_desafio if lead.qualification_data else 'N/A'}
+✅ Urgência: {lead.qualification_data.urgency if lead.qualification_data else 'N/A'}
+✅ Porte: {lead.qualification_data.faturamento_anual if lead.qualification_data else 'N/A'}
+
+🚀 AÇÃO IMEDIATA: PARTIR DIRETO PRO AGENDAMENTO!
+
+RESPOSTA IDEAL (escolha o tom baseado na urgência):
+
+SE URGENTE:
+"{lead.nome}, baseado no que você falou, você tá perdendo dinheiro TODO DIA com isso. Vamos marcar 30min pra eu te mostrar exatamente como resolver. Tenho vaga amanhã 14h ou sexta 10h. Qual funciona melhor?"
+
+SE MÉDIO PRAZO:
+"Olha, {lead.nome}, tenho clientes no seu perfil que estão economizando uns R$ XX mil/mês resolvendo isso. Vamos agendar uma conversa de 30min pra eu te mostrar como? Quando funciona melhor pra você?"
+
+⚠️ NÃO PERGUNTE "Posso te ajudar com mais alguma coisa?"
+⚠️ VÁ DIRETO PRO AGENDAMENTO com CTA forte!"""
 
             # Adicionar contexto do lead
             context_msg = SystemMessage(content=f"""⚠️ DADOS JÁ CAPTURADOS:
@@ -465,13 +504,13 @@ Decisor: {'Sim' if lead.qualification_data and lead.qualification_data.is_decisi
             lead.status = LeadStatus.QUALIFICANDO
             lead.temperatura = LeadTemperature.QUENTE
 
-            # CRITICAL: Só vai para check_qualification se TODAS as informações foram coletadas
-            # Incluindo: faturamento, decisor, maior_desafio, urgency
-            if proximo_passo == "completo":
-                next_action = "check_qualification"
+            # CRITICAL: Se lead totalmente qualificado, partir PRO AGENDAMENTO
+            if proximo_passo == "partir_agendamento":
+                # Lead qualificado → ir direto pro agendamento
+                next_action = "schedule_meeting"
             else:
-                # ✅ FIX: Terminar após gerar pergunta (esperar resposta do usuário)
-                next_action = "end"  # Webhook enviará resposta e aguardará próxima mensagem
+                # Ainda coletando informações → terminar e esperar resposta
+                next_action = "end"
 
             state["messages"] = messages
             state["lead"] = lead

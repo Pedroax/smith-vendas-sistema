@@ -439,7 +439,7 @@ Exemplos baseados na dor:
 
 - **Processos manuais**: "Time perdendo tempo com operacional é dinheiro jogado fora. Dunkin' eliminou 85% das tarefas manuais e aumentou 45% as vendas."
 
-TOM: Empático, urgente, específico
+TOM: Empático, urgente, específico"""
 
             elif not lead.qualification_data or not lead.qualification_data.urgency:
                 proximo_passo = "urgencia_e_agendamento"

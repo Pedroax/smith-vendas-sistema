@@ -335,8 +335,7 @@ async def handle_delete_command(phone: str, push_name: str):
         logger.success(f"🗑️ {message_count} mensagens deletadas do histórico")
 
         # 🔄 RESETAR DADOS DO LEAD (RESET COMPLETO - LIMPAR TUDO!)
-        # IMPORTANTE: Usar APENAS nomes de colunas do _convert_lead_to_db()
-        # Campos que NÃO estão nessa lista NÃO EXISTEM no banco!
+        # NOMES EXATOS DAS COLUNAS CONFIRMADOS NO SUPABASE DASHBOARD
         reset_data = {
             # Status básico
             "status": LeadStatus.NOVO.value,
@@ -347,6 +346,10 @@ async def handle_delete_command(phone: str, push_name: str):
             "empresa": None,
             "email": None,
             "cargo": None,
+            "faturamento_anual": None,
+
+            # Limpar qualificação (JSONB)
+            "qualificacao_detalhes": None,
 
             # Limpar agendamento
             "meeting_scheduled_at": None,

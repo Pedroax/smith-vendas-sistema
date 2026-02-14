@@ -136,17 +136,27 @@ class SupabaseChatMemory:
             True se sucesso, False se erro
         """
         try:
-            # Converter lead_id para int para garantir match correto no banco
+            # Deletar mensagens com lead_id como INT
             lead_id_int = int(self.lead_id)
-
-            response = (
+            response_int = (
                 self.supabase.table("conversation_messages")
                 .delete()
                 .eq("lead_id", lead_id_int)
                 .execute()
             )
+            count_int = len(response_int.data) if response_int.data else 0
 
-            logger.warning(f"🗑️ Histórico limpo para lead {self.lead_id} ({len(response.data) if response.data else 0} registros)")
+            # Deletar mensagens com lead_id como STRING (mensagens antigas)
+            response_str = (
+                self.supabase.table("conversation_messages")
+                .delete()
+                .eq("lead_id", self.lead_id)
+                .execute()
+            )
+            count_str = len(response_str.data) if response_str.data else 0
+
+            total = count_int + count_str
+            logger.warning(f"🗑️ Histórico limpo para lead {self.lead_id} ({total} registros: {count_int} int + {count_str} string)")
             return True
 
         except Exception as e:

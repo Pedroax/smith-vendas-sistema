@@ -451,13 +451,13 @@ PERGUNTE DE FORMA DIRETA:
 "Isso é urgente pra vocês ou dá pra deixar pros próximos meses?"
 
 SE RESPONDER "URGENTE" / "RÁPIDO" / "AGORA":
-→ PARTA IMEDIATAMENTE PRO AGENDAMENTO (veja seção AGENDAMENTO abaixo)
+-> PARTA IMEDIATAMENTE PRO AGENDAMENTO (veja seção AGENDAMENTO abaixo)
 
 SE RESPONDER "PRÓXIMOS MESES" / "SEM PRESSA":
-→ Qualifique normalmente mas com menos prioridade
+-> Qualifique normalmente mas com menos prioridade
 
-⚠️ IMPORTANTE: Se lead está qualificado (decisor + dor + urgência), NÃO PERGUNTE "posso te ajudar com mais alguma coisa?"
-→ VÁ DIRETO PARA O AGENDAMENTO!"""
+IMPORTANTE: Se lead está qualificado (decisor + dor + urgência), NÃO PERGUNTE "posso te ajudar com mais alguma coisa?"
+-> VÁ DIRETO PARA O AGENDAMENTO!"""
 
             else:
                 # LEAD TOTALMENTE QUALIFICADO - PARTIR PRO AGENDAMENTO!

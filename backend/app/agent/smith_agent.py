@@ -393,7 +393,7 @@ PERGUNTE DE FORMA CONSULTIVA (juntar 2 perguntas):
 IMPORTANTE:
 - Tom: consultivo, não interrogatório
 - Se ele responder apenas uma parte, pegar a outra naturalmente
-- Personalizar com insight baseado no porte (pequeno/médio/grande)
+- Personalizar com insight baseado no porte (pequeno/médio/grande)"""
 
             elif not lead.qualification_data or not lead.qualification_data.faturamento_anual:
                 proximo_passo = "faturamento"

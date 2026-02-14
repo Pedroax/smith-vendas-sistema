@@ -77,7 +77,7 @@ SEMPRE:
 
 CONTEXTO CRÍTICO: Você está em uma conversa de diagnóstico com um lead. Seja consultivo, não interrogativo.
 
-⚠️ SEMPRE VERIFIQUE O QUE JÁ TEM ANTES DE PERGUNTAR!
+SEMPRE VERIFIQUE O QUE JÁ TEM ANTES DE PERGUNTAR!
 
 SEQUÊNCIA DE MAPEAMENTO ESTRATÉGICO:
 
@@ -164,9 +164,9 @@ ESTRUTURA (use EXATAMENTE assim):
 
 Pelo que você me contou sobre a [empresa], identifiquei algumas áreas onde IA pode te ajudar de verdade:
 
-✅ Automação de atendimento → Responde leads em segundos
-✅ Qualificação automática → Só fala com quem tem fit
-✅ Follow-up inteligente → Nenhum lead esquecido
+- Automação de atendimento -> Responde leads em segundos
+- Qualificação automática -> Só fala com quem tem fit
+- Follow-up inteligente -> Nenhum lead esquecido
 
 Empresas parecidas com a sua estão economizando R$ 30-80k/mês com isso.
 
@@ -256,18 +256,18 @@ REGRA: Máximo 3-4 linhas! Confirmar agendamento de forma direta.
 SITUAÇÃO: Lead informou email, reunião foi criada no Google Calendar.
 
 ESTRUTURA:
-"Agendado! {data_hora_formatada} 📅
+"Agendado! {data_hora_formatada}
 
 Você vai receber um email com o convite do Google Calendar + link do Meet.
 
-Te vejo lá! 🚀"
+Te vejo lá!"
 
 EXEMPLO:
-"Agendado! Terça-feira, 15/01 às 14h 📅
+"Agendado! Terça-feira, 15/01 às 14h
 
 Você vai receber um email com o convite do Google Calendar + link do Meet.
 
-Te vejo lá! 🚀"
+Te vejo lá!"
 
 REGRAS:
 - Máximo 3-4 linhas
@@ -462,14 +462,14 @@ IMPORTANTE: Se lead está qualificado (decisor + dor + urgência), NÃO PERGUNTE
             else:
                 # LEAD TOTALMENTE QUALIFICADO - PARTIR PRO AGENDAMENTO!
                 proximo_passo = "partir_agendamento"
-                contexto_estrategico = f"""🎯 LEAD COMPLETAMENTE QUALIFICADO!
+                contexto_estrategico = f"""LEAD COMPLETAMENTE QUALIFICADO!
 
-✅ Decisor: {'SIM' if lead.qualification_data and lead.qualification_data.is_decision_maker else 'NÃO'}
-✅ Dor mapeada: {lead.qualification_data.maior_desafio if lead.qualification_data else 'N/A'}
-✅ Urgência: {lead.qualification_data.urgency if lead.qualification_data else 'N/A'}
-✅ Porte: {lead.qualification_data.faturamento_anual if lead.qualification_data else 'N/A'}
+Decisor: {'SIM' if lead.qualification_data and lead.qualification_data.is_decision_maker else 'NÃO'}
+Dor mapeada: {lead.qualification_data.maior_desafio if lead.qualification_data else 'N/A'}
+Urgência: {lead.qualification_data.urgency if lead.qualification_data else 'N/A'}
+Porte: {lead.qualification_data.faturamento_anual if lead.qualification_data else 'N/A'}
 
-🚀 AÇÃO IMEDIATA: PARTIR DIRETO PRO AGENDAMENTO!
+AÇÃO IMEDIATA: PARTIR DIRETO PRO AGENDAMENTO!
 
 RESPOSTA IDEAL (escolha o tom baseado na urgência):
 
@@ -479,13 +479,13 @@ SE URGENTE:
 SE MÉDIO PRAZO:
 "Olha, {lead.nome}, tenho clientes no seu perfil que estão economizando uns R$ XX mil/mês resolvendo isso. Vamos agendar uma conversa de 30min pra eu te mostrar como? Quando funciona melhor pra você?"
 
-⚠️ NÃO PERGUNTE "Posso te ajudar com mais alguma coisa?"
-⚠️ VÁ DIRETO PRO AGENDAMENTO com CTA forte!"""
+IMPORTANTE: NÃO PERGUNTE "Posso te ajudar com mais alguma coisa?"
+VÁ DIRETO PRO AGENDAMENTO com CTA forte!"""
 
             # Adicionar contexto do lead
-            context_msg = SystemMessage(content=f"""⚠️ DADOS JÁ CAPTURADOS:
+            context_msg = SystemMessage(content=f"""DADOS JÁ CAPTURADOS:
 
-Nome: {lead.nome} ✅
+Nome: {lead.nome}
 Email: {lead.email or 'Não capturado'}
 Empresa: {lead.empresa or 'Não capturado'}
 Faturamento: {lead.qualification_data.faturamento_anual if lead.qualification_data and lead.qualification_data.faturamento_anual else 'Não capturado'}
@@ -493,8 +493,8 @@ Decisor: {'Sim' if lead.qualification_data and lead.qualification_data.is_decisi
 
 {contexto_estrategico}
 
-⚠️ NUNCA pergunte o nome novamente! Use "{lead.nome}" nas respostas.
-⚠️ Seja CONSULTIVO, não mecânico. Cada pergunta deve ter contexto e demonstrar valor.""")
+IMPORTANTE: NUNCA pergunte o nome novamente! Use "{lead.nome}" nas respostas.
+Seja CONSULTIVO, não mecânico. Cada pergunta deve ter contexto e demonstrar valor.""")
 
             # Gerar resposta
             response = self.llm.invoke([system_msg, context_msg] + list(messages))
@@ -558,7 +558,7 @@ Decisor: {'Sim' if lead.qualification_data.is_decision_maker else 'Não'}
 Urgência: {lead.qualification_data.urgency or 'não informada'}
 Score: {score}/100
 
-🎯 OFEREÇA AS 2 OPÇÕES DE FORMA CLARA E OBJETIVA.""")
+OFEREÇA AS 2 OPÇÕES DE FORMA CLARA E OBJETIVA.""")
 
                 messages.append(context_msg)
 
@@ -576,7 +576,7 @@ Score: {score}/100
                 state["next_action"] = "end"  # ✅ FIX: Terminar após oferecer opções (esperar escolha do lead)
                 state["show_calendar"] = True  # Sinalizar para mostrar calendário no frontend
 
-                logger.success(f"✅ {lead.nome} QUALIFICADO (Score: {score}), mostrando calendário")
+                logger.success(f"{lead.nome} QUALIFICADO (Score: {score}), mostrando calendário")
                 return state
 
             else:
@@ -664,7 +664,7 @@ Score: {score}/100
                 except Exception as calendar_error:
                     logger.error(f"❌ Erro ao buscar horários: {calendar_error}")
             else:
-                logger.warning("⚠️ Google Calendar não disponível - usando horários fictícios")
+                logger.warning("Google Calendar não disponível - usando horários fictícios")
 
             # System prompt COM horários reais
             system_prompt = f"""{SYSTEM_PROMPTS["agendamento"]}

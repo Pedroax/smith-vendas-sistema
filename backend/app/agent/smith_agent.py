@@ -11,6 +11,7 @@ from datetime import datetime
 from app.config import settings
 from app.models.lead import Lead, LeadStatus, LeadTemperature, QualificationData
 from app.services import roi_generator, whatsapp_service, lead_qualifier
+from app.services.google_calendar_service import google_calendar_service
 from loguru import logger
 
 
@@ -578,14 +579,44 @@ Score: {score}/100
             logger.error(f"Erro no generate_roi: {e}")
             return state
 
-    def schedule_meeting(self, state: AgentState) -> AgentState:
+    async def schedule_meeting(self, state: AgentState) -> AgentState:
         """Node: Agendar reunião com o closer"""
         try:
             lead = state["lead"]
             messages = state["messages"]
 
-            # System prompt
-            system_msg = SystemMessage(content=SYSTEM_PROMPTS["agendamento"])
+            # 📅 BUSCAR HORÁRIOS REAIS DO GOOGLE CALENDAR
+            available_slots = []
+            slots_text = "Horários disponíveis não encontrados. Por favor, entre em contato direto conosco."
+
+            if google_calendar_service.is_available():
+                try:
+                    available_slots = await google_calendar_service.get_available_slots(
+                        days_ahead=7,
+                        num_slots=3,
+                        duration_minutes=60
+                    )
+
+                    if available_slots:
+                        slots_text = "Horários disponíveis:\n"
+                        for i, slot in enumerate(available_slots, 1):
+                            slots_text += f"{i}. {slot['display']}\n"
+
+                    logger.info(f"📅 {len(available_slots)} horários disponíveis encontrados")
+                except Exception as calendar_error:
+                    logger.error(f"❌ Erro ao buscar horários: {calendar_error}")
+            else:
+                logger.warning("⚠️ Google Calendar não disponível - usando horários fictícios")
+
+            # System prompt COM horários reais
+            system_prompt = f"""{SYSTEM_PROMPTS["agendamento"]}
+
+IMPORTANTE: Use EXATAMENTE estes horários disponíveis do Google Calendar:
+{slots_text}
+
+NÃO invente horários! Use apenas os listados acima."""
+
+            system_msg = SystemMessage(content=system_prompt)
 
             # Gerar resposta
             response = self.llm.invoke([system_msg] + list(messages))
@@ -597,10 +628,10 @@ Score: {score}/100
 
             state["messages"] = messages
             state["lead"] = lead
-            state["current_stage"] = "agendamento_marcado"  # ✅ Usar valor correto do enum
-            state["next_action"] = "end"  # ✅ FIX: Terminar após oferecer horários (esperar escolha)
+            state["current_stage"] = "agendamento_marcado"
+            state["next_action"] = "end"
 
-            logger.info(f"Agendando reunião para {lead.nome}")
+            logger.info(f"Oferecendo horários de agendamento para {lead.nome}")
             return state
 
         except Exception as e:

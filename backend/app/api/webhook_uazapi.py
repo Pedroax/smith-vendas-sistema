@@ -334,16 +334,19 @@ async def handle_delete_command(phone: str, push_name: str):
         await memory.clear_history()
         logger.success(f"🗑️ {message_count} mensagens deletadas do histórico")
 
-        # 🔄 RESETAR DADOS DO LEAD (apenas campos que existem na tabela)
+        # 🔄 RESETAR DADOS DO LEAD (apenas campos básicos)
         reset_data = {
             "status": LeadStatus.NOVO.value,
             "temperatura": LeadTemperature.FRIO.value,
             "lead_score": 0,
-            "ultima_interacao": None,
         }
 
-        await repository.update(lead_id, reset_data)
-        logger.success(f"♻️ Lead {lead_nome} resetado para estado inicial")
+        try:
+            await repository.update(lead_id, reset_data)
+            logger.success(f"♻️ Lead {lead_nome} resetado para estado inicial")
+        except Exception as update_error:
+            logger.warning(f"⚠️ Não foi possível resetar dados do lead: {str(update_error)}")
+            # Continuar mesmo se falhar - o histórico já foi limpo
 
         # 📤 ENVIAR MENSAGEM DE CONFIRMAÇÃO
         confirmation_msg = (

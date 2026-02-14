@@ -551,9 +551,10 @@ Seja CONSULTIVO, não mecânico. Cada pergunta deve ter contexto e demonstrar va
                 messages = state["messages"].copy()
 
                 # Adicionar contexto do lead
+                faturamento_fmt = f"{lead.qualification_data.faturamento_anual:,.0f}"
                 context_msg = SystemMessage(content=f"""LEAD QUALIFICADO: {lead.nome}
 
-Faturamento: R$ {lead.qualification_data.faturamento_anual:,.0f}/ano
+Faturamento: R$ {faturamento_fmt}/ano
 Decisor: {'Sim' if lead.qualification_data.is_decision_maker else 'Não'}
 Urgência: {lead.qualification_data.urgency or 'não informada'}
 Score: {score}/100

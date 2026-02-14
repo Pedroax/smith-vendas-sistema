@@ -108,9 +108,11 @@ async def webhook_uazapi(request: Request):
         # 🧪 COMANDO DE TESTE: /delete - Resetar memória completamente
         if message_text.strip().lower() == "/delete":
             logger.warning(f"🗑️ Comando /delete recebido de {push_name} ({phone})")
-            asyncio.create_task(
+            logger.info(f"🔍 DEBUG: Criando task para handle_delete_command")
+            task = asyncio.create_task(
                 handle_delete_command(phone, push_name)
             )
+            logger.info(f"🔍 DEBUG: Task criada: {task}")
             return {
                 "status": "command_executed",
                 "command": "delete",
@@ -300,6 +302,7 @@ async def handle_delete_command(phone: str, push_name: str):
         phone: Telefone do lead (sem @s.whatsapp.net)
         push_name: Nome do contato
     """
+    logger.warning(f"🔍 DEBUG: handle_delete_command INICIADA para {phone}")
     try:
         logger.info(f"🗑️ Executando comando /delete para {push_name} ({phone})")
 
@@ -355,7 +358,10 @@ async def handle_delete_command(phone: str, push_name: str):
             "🆕 Podemos começar uma nova conversa do zero!"
         )
 
+        logger.warning(f"🔍 DEBUG: Enviando confirmação para {phone}")
+        logger.warning(f"🔍 DEBUG: Mensagem: {confirmation_msg[:100]}...")
         success = uazapi_service.send_text_message(phone, confirmation_msg)
+        logger.warning(f"🔍 DEBUG: Resultado do envio: {success}")
 
         if success:
             logger.success(

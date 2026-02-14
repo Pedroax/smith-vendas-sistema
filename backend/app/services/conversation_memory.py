@@ -39,11 +39,14 @@ class SupabaseChatMemory:
             Lista de mensagens LangChain (HumanMessage, AIMessage)
         """
         try:
+            # Converter lead_id para int para garantir match correto no banco
+            lead_id_int = int(self.lead_id)
+
             # Buscar últimas N mensagens ordenadas por timestamp
             response = (
                 self.supabase.table("conversation_messages")
                 .select("role, content, timestamp")
-                .eq("lead_id", self.lead_id)
+                .eq("lead_id", lead_id_int)
                 .order("timestamp", desc=True)
                 .limit(self.max_messages)
                 .execute()
@@ -133,14 +136,17 @@ class SupabaseChatMemory:
             True se sucesso, False se erro
         """
         try:
+            # Converter lead_id para int para garantir match correto no banco
+            lead_id_int = int(self.lead_id)
+
             response = (
                 self.supabase.table("conversation_messages")
                 .delete()
-                .eq("lead_id", self.lead_id)
+                .eq("lead_id", lead_id_int)
                 .execute()
             )
 
-            logger.warning(f"🗑️ Histórico limpo para lead {self.lead_id}")
+            logger.warning(f"🗑️ Histórico limpo para lead {self.lead_id} ({len(response.data) if response.data else 0} registros)")
             return True
 
         except Exception as e:
@@ -158,10 +164,13 @@ class SupabaseChatMemory:
             Número de mensagens
         """
         try:
+            # Converter lead_id para int para garantir match correto no banco
+            lead_id_int = int(self.lead_id)
+
             response = (
                 self.supabase.table("conversation_messages")
                 .select("id", count="exact")
-                .eq("lead_id", self.lead_id)
+                .eq("lead_id", lead_id_int)
                 .execute()
             )
 

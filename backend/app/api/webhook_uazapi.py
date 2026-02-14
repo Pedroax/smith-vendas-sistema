@@ -335,32 +335,26 @@ async def handle_delete_command(phone: str, push_name: str):
         logger.success(f"🗑️ {message_count} mensagens deletadas do histórico")
 
         # 🔄 RESETAR DADOS DO LEAD (RESET COMPLETO - LIMPAR TUDO!)
-        # IMPORTANTE: Usar APENAS nomes de colunas que existem no Supabase!
+        # IMPORTANTE: Usar APENAS nomes de colunas do _convert_lead_to_db()
+        # Campos que NÃO estão nessa lista NÃO EXISTEM no banco!
         reset_data = {
             # Status básico
             "status": LeadStatus.NOVO.value,
             "temperatura": LeadTemperature.FRIO.value,
             "lead_score": 0,
 
-            # Limpar informações de contato/empresa (CAMPOS QUE EXISTEM!)
+            # Limpar informações de contato/empresa
             "empresa": None,
             "email": None,
             "cargo": None,
-
-            # Limpar dados de qualificação e ROI (NOMES CORRETOS DO BANCO!)
-            "qualificacao_detalhes": None,  # NÃO "qualification_data"
-            "roi_analysis": None,
 
             # Limpar agendamento
             "meeting_scheduled_at": None,
             "meeting_google_event_id": None,
 
-            # Limpar notas e tags (NOME CORRETO DO BANCO!)
-            "observacoes": None,  # NÃO "notas"
+            # Limpar notas e tags
+            "observacoes": None,
             "tags": [],
-
-            # Limpar followup config
-            "followup_config": None,
         }
 
         try:

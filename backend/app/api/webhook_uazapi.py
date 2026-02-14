@@ -334,13 +334,11 @@ async def handle_delete_command(phone: str, push_name: str):
         await memory.clear_history()
         logger.success(f"🗑️ {message_count} mensagens deletadas do histórico")
 
-        # 🔄 RESETAR DADOS DO LEAD
+        # 🔄 RESETAR DADOS DO LEAD (apenas campos que existem na tabela)
         reset_data = {
             "status": LeadStatus.NOVO.value,
             "temperatura": LeadTemperature.FRIO.value,
             "lead_score": 0,
-            "qualification_data": None,
-            "roi_analysis": None,
             "ultima_interacao": None,
         }
 

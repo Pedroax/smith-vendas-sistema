@@ -368,7 +368,7 @@ class SmithAgent:
             logger.error(f"Erro no handle_new_lead: {e}")
             return state
 
-    def qualify_lead(self, state: AgentState) -> AgentState:
+    async def qualify_lead(self, state: AgentState) -> AgentState:
         """Node: Qualificar lead com perguntas BANT"""
         try:
             lead = state["lead"]
@@ -381,11 +381,24 @@ class SmithAgent:
             proximo_passo = None
             contexto_estrategico = ""
 
-            if not lead.email:
-                proximo_passo = "contexto_operacional"
+            if not lead.empresa:
+                proximo_passo = "empresa_e_cargo"
                 contexto_estrategico = f"""SITUAÇÃO ATUAL: Nome capturado ({lead.nome}).
 
-PRÓXIMO PASSO: Entender contexto operacional DE FORMA NATURAL.
+PRÓXIMO PASSO: Capturar empresa e cargo.
+
+PERGUNTE DE FORMA NATURAL:
+"{lead.nome}, me conta: qual é sua empresa e qual seu cargo lá?"
+
+IMPORTANTE:
+- Tom: consultivo, leve
+- Essas informações ajudam a personalizar a abordagem"""
+
+            elif not lead.qualification_data or not lead.qualification_data.funcionarios_atendimento:
+                proximo_passo = "contexto_operacional"
+                contexto_estrategico = f"""SITUAÇÃO ATUAL: Empresa e cargo capturados.
+
+PRÓXIMO PASSO: Entender contexto operacional.
 
 PERGUNTE DE FORMA CONSULTIVA (juntar 2 perguntas):
 "{lead.nome}, pra eu entender melhor como posso te ajudar: quantas pessoas você tem no time de vendas e qual a faixa de faturamento mensal da empresa?"
@@ -460,27 +473,59 @@ IMPORTANTE: Se lead está qualificado (decisor + dor + urgência), NÃO PERGUNTE
 -> VÁ DIRETO PARA O AGENDAMENTO!"""
 
             else:
-                # LEAD TOTALMENTE QUALIFICADO - PARTIR PRO AGENDAMENTO!
+                # LEAD TOTALMENTE QUALIFICADO - BUSCAR HORÁRIOS E OFERECER DIRETO!
                 proximo_passo = "partir_agendamento"
-                contexto_estrategico = f"""LEAD COMPLETAMENTE QUALIFICADO!
 
-Decisor: {'SIM' if lead.qualification_data and lead.qualification_data.is_decision_maker else 'NÃO'}
-Dor mapeada: {lead.qualification_data.maior_desafio if lead.qualification_data else 'N/A'}
-Urgência: {lead.qualification_data.urgency if lead.qualification_data else 'N/A'}
-Porte: {lead.qualification_data.faturamento_anual if lead.qualification_data else 'N/A'}
+                # Buscar horários disponíveis do Google Calendar
+                available_slots = []
+                if google_calendar_service.is_available():
+                    try:
+                        available_slots = await google_calendar_service.get_available_slots(
+                            days_ahead=7,
+                            num_slots=3,
+                            duration_minutes=60
+                        )
+                        logger.info(f"Horários disponíveis encontrados para {lead.nome}")
+                    except Exception as e:
+                        logger.error(f"Erro ao buscar horários: {e}")
 
-AÇÃO IMEDIATA: PARTIR DIRETO PRO AGENDAMENTO!
+                # Montar texto dos horários
+                if available_slots:
+                    slots_text = "\n".join([f"{i+1}. {slot['display']}" for i, slot in enumerate(available_slots)])
+                    contexto_estrategico = f"""LEAD TOTALMENTE QUALIFICADO!
 
-RESPOSTA IDEAL (escolha o tom baseado na urgência):
+HORÁRIOS DISPONÍVEIS:
+{slots_text}
+
+RESPOSTA DIRETA (escolha baseado na urgência):
 
 SE URGENTE:
-"{lead.nome}, baseado no que você falou, você tá perdendo dinheiro TODO DIA com isso. Vamos marcar 30min pra eu te mostrar exatamente como resolver. Tenho vaga amanhã 14h ou sexta 10h. Qual funciona melhor?"
+"Perfeito, {lead.nome}! Com base no que você me contou, identifiquei que podemos resolver esse problema de atendimento rapidamente. Tenho esses horários disponíveis para uma reunião de 30min com nosso especialista:
+
+{slots_text}
+
+Qual funciona melhor pra você? Ah, e qual seu email para eu enviar o convite do Google Calendar?"
 
 SE MÉDIO PRAZO:
-"Olha, {lead.nome}, tenho clientes no seu perfil que estão economizando uns R$ XX mil/mês resolvendo isso. Vamos agendar uma conversa de 30min pra eu te mostrar como? Quando funciona melhor pra você?"
+"Ótimo, {lead.nome}! Vou agendar uma conversa de 30min para te mostrar exatamente como resolver isso. Horários disponíveis:
 
-IMPORTANTE: NÃO PERGUNTE "Posso te ajudar com mais alguma coisa?"
-VÁ DIRETO PRO AGENDAMENTO com CTA forte!"""
+{slots_text}
+
+Qual te atende melhor? E qual seu email para o convite?"
+
+IMPORTANTE:
+- Mostrar OS HORÁRIOS REAIS acima
+- Pedir horário E email juntos
+- Ser DIRETO e ASSERTIVO"""
+                else:
+                    contexto_estrategico = f"""LEAD TOTALMENTE QUALIFICADO!
+
+AÇÃO: Google Calendar indisponível no momento.
+
+RESPOSTA:
+"Perfeito, {lead.nome}! Vou verificar os horários disponíveis e te retorno em instantes. Pode me passar seu email e telefone para eu enviar o convite da reunião?"
+
+IMPORTANTE: Pedir email e telefone para agendamento manual."""
 
             # Adicionar contexto do lead
             context_msg = SystemMessage(content=f"""DADOS JÁ CAPTURADOS:

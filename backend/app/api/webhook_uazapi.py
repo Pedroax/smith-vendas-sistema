@@ -334,11 +334,37 @@ async def handle_delete_command(phone: str, push_name: str):
         await memory.clear_history()
         logger.success(f"🗑️ {message_count} mensagens deletadas do histórico")
 
-        # 🔄 RESETAR DADOS DO LEAD (apenas campos básicos)
+        # 🔄 RESETAR DADOS DO LEAD (RESET COMPLETO - LIMPAR TUDO!)
         reset_data = {
+            # Status básico
             "status": LeadStatus.NOVO.value,
             "temperatura": LeadTemperature.FRIO.value,
             "lead_score": 0,
+
+            # Limpar informações de contato/empresa
+            "empresa": None,
+            "email": None,
+
+            # Limpar dados de qualificação e ROI
+            "qualification_data": None,
+            "roi_analysis": None,
+            "valor_estimado": 0.0,
+
+            # Limpar agendamento
+            "meeting_scheduled_at": None,
+            "meeting_google_event_id": None,
+
+            # Limpar notas e tags
+            "notas": None,
+            "tags": [],
+
+            # Limpar metadados da IA
+            "ai_summary": None,
+            "ai_next_action": None,
+            "requires_human_approval": False,
+
+            # Limpar última interação
+            "ultima_mensagem_ia": None,
         }
 
         try:

@@ -424,9 +424,12 @@ class LeadsRepository:
         try:
             import uuid
 
+            # Garantir que lead_id é int para consistência no banco
+            lead_id_int = int(lead_id) if lead_id else None
+
             message_data = {
                 "id": str(uuid.uuid4()),
-                "lead_id": lead_id,
+                "lead_id": lead_id_int,
                 "role": role,
                 "content": content,
                 "metadata": metadata or {},

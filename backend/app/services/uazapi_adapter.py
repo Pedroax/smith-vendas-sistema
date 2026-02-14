@@ -90,7 +90,14 @@ def adapt_uazapi_webhook(payload: Dict[str, Any]) -> Dict[str, Any]:
         # Extrair campos essenciais
         remote_jid = message_data.get('chatid') or chat_data.get('wa_chatid')
         message_id = message_data.get('id') or message_data.get('messageid')
-        message_text = message_data.get('content') or message_data.get('text', '')
+
+        # Extrair texto da mensagem (pode ser string ou dict com campo 'text')
+        content = message_data.get('content', {})
+        if isinstance(content, dict):
+            message_text = content.get('text', '')
+        else:
+            message_text = content or message_data.get('text', '')
+
         from_me = message_data.get('fromMe', False)
         sender_name = message_data.get('senderName') or chat_data.get('name', '')
         timestamp = message_data.get('messageTimestamp', 0)
@@ -98,6 +105,9 @@ def adapt_uazapi_webhook(payload: Dict[str, Any]) -> Dict[str, Any]:
         # Verificar campos obrigatórios
         if not remote_jid:
             raise ValueError("Campo 'remoteJid' não encontrado no payload UAZAPI")
+
+        # Garantir que message_text é string
+        message_text = str(message_text) if message_text else ''
 
         if not message_text:
             logger.warning("⚠️ Mensagem vazia recebida da UAZAPI")

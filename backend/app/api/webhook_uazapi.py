@@ -497,7 +497,7 @@ async def process_with_agent(lead: Lead, message: str) -> tuple[str, bool]:
 
         # Verificar se deve mostrar calendário
         # (quando lead foi qualificado e escolheu agendar)
-        if result.get("next_action") == "schedule_meeting":
+        if result.get("next_action") == "schedule":
             show_calendar = True
 
         return response_text, show_calendar

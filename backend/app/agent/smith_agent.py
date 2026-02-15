@@ -521,7 +521,7 @@ Seja CONSULTIVO, não mecânico. Cada pergunta deve ter contexto e demonstrar va
             # CRITICAL: Se lead totalmente qualificado, partir PRO AGENDAMENTO
             if proximo_passo == "partir_agendamento":
                 # Lead qualificado → ir direto pro agendamento
-                next_action = "schedule_meeting"
+                next_action = "schedule"  # FIX: usar "schedule" não "schedule_meeting" (routing_map)
             else:
                 # Ainda coletando informações → terminar e esperar resposta
                 next_action = "end"

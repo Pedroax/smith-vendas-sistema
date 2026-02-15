@@ -368,7 +368,7 @@ class SmithAgent:
             logger.error(f"Erro no handle_new_lead: {e}")
             return state
 
-    async def qualify_lead(self, state: AgentState) -> AgentState:
+    def qualify_lead(self, state: AgentState) -> AgentState:
         """Node: Qualificar lead com perguntas BANT"""
         try:
             lead = state["lead"]
@@ -473,59 +473,28 @@ IMPORTANTE: Se lead está qualificado (decisor + dor + urgência), NÃO PERGUNTE
 -> VÁ DIRETO PARA O AGENDAMENTO!"""
 
             else:
-                # LEAD TOTALMENTE QUALIFICADO - BUSCAR HORÁRIOS E OFERECER DIRETO!
+                # LEAD TOTALMENTE QUALIFICADO - PARTIR PRO AGENDAMENTO!
                 proximo_passo = "partir_agendamento"
 
-                # Buscar horários disponíveis do Google Calendar
-                available_slots = []
-                if google_calendar_service.is_available():
-                    try:
-                        available_slots = await google_calendar_service.get_available_slots(
-                            days_ahead=7,
-                            num_slots=3,
-                            duration_minutes=60
-                        )
-                        logger.info(f"Horários disponíveis encontrados para {lead.nome}")
-                    except Exception as e:
-                        logger.error(f"Erro ao buscar horários: {e}")
+                # Sinalizar que deve ir direto para schedule_meeting
+                logger.info(f"Lead {lead.nome} totalmente qualificado - indo para agendamento")
 
-                # Montar texto dos horários
-                if available_slots:
-                    slots_text = "\n".join([f"{i+1}. {slot['display']}" for i, slot in enumerate(available_slots)])
-                    contexto_estrategico = f"""LEAD TOTALMENTE QUALIFICADO!
+                contexto_estrategico = f"""LEAD TOTALMENTE QUALIFICADO!
 
-HORÁRIOS DISPONÍVEIS:
-{slots_text}
+AÇÃO IMEDIATA: Confirmar interesse em agendamento e partir para mostrar horários.
 
 RESPOSTA DIRETA (escolha baseado na urgência):
 
 SE URGENTE:
-"Perfeito, {lead.nome}! Com base no que você me contou, identifiquei que podemos resolver esse problema de atendimento rapidamente. Tenho esses horários disponíveis para uma reunião de 30min com nosso especialista:
-
-{slots_text}
-
-Qual funciona melhor pra você? Ah, e qual seu email para eu enviar o convite do Google Calendar?"
+"Perfeito, {lead.nome}! Pelo que você me contou, identifiquei que podemos resolver esse problema de atendimento rapidamente. Vou buscar os horários disponíveis para uma reunião de 30min com nosso especialista..."
 
 SE MÉDIO PRAZO:
-"Ótimo, {lead.nome}! Vou agendar uma conversa de 30min para te mostrar exatamente como resolver isso. Horários disponíveis:
-
-{slots_text}
-
-Qual te atende melhor? E qual seu email para o convite?"
+"Ótimo, {lead.nome}! Vamos agendar uma conversa de 30min para te mostrar exatamente como resolver isso. Deixa eu consultar a agenda..."
 
 IMPORTANTE:
-- Mostrar OS HORÁRIOS REAIS acima
-- Pedir horário E email juntos
-- Ser DIRETO e ASSERTIVO"""
-                else:
-                    contexto_estrategico = f"""LEAD TOTALMENTE QUALIFICADO!
-
-AÇÃO: Google Calendar indisponível no momento.
-
-RESPOSTA:
-"Perfeito, {lead.nome}! Vou verificar os horários disponíveis e te retorno em instantes. Pode me passar seu email e telefone para eu enviar o convite da reunião?"
-
-IMPORTANTE: Pedir email e telefone para agendamento manual."""
+- Seja DIRETO e ASSERTIVO
+- Afirme que vai buscar os horários (não pergunte se quer agendar)
+- Próxima mensagem vai mostrar os horários reais"""
 
             # Adicionar contexto do lead
             context_msg = SystemMessage(content=f"""DADOS JÁ CAPTURADOS:

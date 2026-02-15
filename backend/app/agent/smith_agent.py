@@ -374,6 +374,34 @@ class SmithAgent:
             lead = state["lead"]
             messages = state["messages"]
 
+            # DETECTAR SE LEAD ACEITOU AGENDAR (última mensagem do usuário)
+            last_user_message = ""
+            if messages:
+                for msg in reversed(messages):
+                    if isinstance(msg, HumanMessage):
+                        last_user_message = msg.content.lower().strip()
+                        break
+
+            # Palavras que indicam aceitação de agendamento
+            aceita_agendar_keywords = ["sim", "pode", "vamos", "aceito", "quero", "podemos", "ok", "beleza", "perfeito", "ótimo", "confirmo", "agenda", "marcar", "próxima", "semana"]
+            aceitou_agendar = any(keyword in last_user_message for keyword in aceita_agendar_keywords)
+
+            # Se lead JÁ QUALIFICADO (tem urgência) e ACEITOU AGENDAR → IR DIRETO PRO SCHEDULE
+            lead_ja_qualificado = (
+                lead.qualification_data and
+                lead.qualification_data.urgency and
+                lead.qualification_data.is_decision_maker and
+                lead.qualification_data.maior_desafio
+            )
+
+            if lead_ja_qualificado and aceitou_agendar:
+                logger.info(f"🎯 Lead {lead.nome} JÁ QUALIFICADO e ACEITOU AGENDAR - indo direto para schedule_meeting")
+                state["next_action"] = "schedule"
+                state["lead"] = lead
+                state["current_stage"] = "agendamento_marcado"
+                # NÃO adicionar mensagem - deixar o schedule_meeting fazer isso
+                return state
+
             # System prompt
             system_msg = SystemMessage(content=SYSTEM_PROMPTS["qualificando"])
 

@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from loguru import logger
 from typing import Optional, Dict, Any, List
 import os
+import json
 from zoneinfo import ZoneInfo
 
 from app.config import settings
@@ -30,22 +31,45 @@ class GoogleCalendarService:
     def _authenticate(self):
         """Autentica com Google Calendar API usando Service Account"""
         try:
-            # Usar credenciais do settings
-            credentials_path = settings.google_credentials_path
+            credentials = None
 
-            # Verificar se arquivo de credenciais existe
-            if not os.path.exists(credentials_path):
-                logger.warning(f"⚠️ Arquivo de credenciais não encontrado: {credentials_path}")
-                logger.warning("⚠️ Google Calendar desabilitado. Configure as credenciais para habilitar.")
+            # OPÇÃO 1: Tentar carregar da variável de ambiente (PRODUÇÃO - Railway)
+            if settings.google_credentials_json:
+                logger.info("🔑 Carregando credenciais do Google Calendar da variável de ambiente...")
+                try:
+                    credentials_dict = json.loads(settings.google_credentials_json)
+                    credentials = service_account.Credentials.from_service_account_info(
+                        credentials_dict,
+                        scopes=SCOPES
+                    )
+                    logger.success("✅ Credenciais carregadas da variável de ambiente")
+                except json.JSONDecodeError as e:
+                    logger.error(f"❌ JSON inválido em GOOGLE_CREDENTIALS_JSON: {str(e)}")
+                except Exception as e:
+                    logger.error(f"❌ Erro ao processar credenciais da env var: {str(e)}")
+
+            # OPÇÃO 2: Tentar carregar do arquivo (DESENVOLVIMENTO - Local)
+            if not credentials:
+                credentials_path = settings.google_credentials_path
+
+                if os.path.exists(credentials_path):
+                    logger.info(f"🔑 Carregando credenciais do arquivo: {credentials_path}")
+                    credentials = service_account.Credentials.from_service_account_file(
+                        credentials_path,
+                        scopes=SCOPES
+                    )
+                    logger.success("✅ Credenciais carregadas do arquivo local")
+                else:
+                    logger.warning(f"⚠️ Arquivo de credenciais não encontrado: {credentials_path}")
+
+            # Verificar se conseguiu carregar credenciais
+            if not credentials:
+                logger.warning("⚠️ Google Calendar desabilitado. Configure GOOGLE_CREDENTIALS_JSON (Railway) ou google_credentials.json (local)")
                 return
 
-            credentials = service_account.Credentials.from_service_account_file(
-                credentials_path,
-                scopes=SCOPES
-            )
-
+            # Construir serviço
             self.service = build('calendar', 'v3', credentials=credentials)
-            logger.success("✅ Autenticado com Google Calendar API")
+            logger.success("✅ Google Calendar API autenticado e disponível")
 
         except Exception as e:
             logger.error(f"❌ Erro ao autenticar com Google Calendar: {str(e)}")

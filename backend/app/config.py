@@ -47,6 +47,10 @@ class Settings(BaseSettings):
         default="google_credentials.json",
         env="GOOGLE_CREDENTIALS_PATH"
     )
+    google_credentials_json: Optional[str] = Field(
+        default=None,
+        env="GOOGLE_CREDENTIALS_JSON"
+    )
     google_calendar_id: str = Field(default="primary", env="GOOGLE_CALENDAR_ID")
     calendar_timezone: str = Field(default="America/Sao_Paulo", env="CALENDAR_TIMEZONE")
     calendar_work_start_hour: str = Field(default="09:00", env="CALENDAR_WORK_START_HOUR")

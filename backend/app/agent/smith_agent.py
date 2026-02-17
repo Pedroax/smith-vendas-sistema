@@ -2,7 +2,7 @@
 Smith 2.0 - Agente SDR Inteligente
 State Machine LangGraph para qualificação e agendamento de leads
 """
-from typing import TypedDict, Annotated, Sequence
+from typing import TypedDict, Annotated, Sequence, Optional, Any
 from langgraph.graph import StateGraph, END
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
@@ -26,6 +26,7 @@ class AgentState(TypedDict):
     current_stage: str
     next_action: str
     requires_human_approval: bool
+    available_slots: list  # Horários disponíveis do Google Calendar
 
 
 # ========================================
@@ -335,8 +336,12 @@ class SmithAgent:
                     state["next_action"] = "qualify"
                 elif current_stage == "qualificado":
                     state["next_action"] = "qualify"  # Lead qualificado mas ainda em conversa
+                elif current_stage in ["aguardando_escolha_horario", "aguardando_email"]:
+                    state["next_action"] = "confirm"  # Lead precisa confirmar horário/email
+                elif current_stage == "agendamento_confirmado":
+                    state["next_action"] = "end"  # Reunião confirmada e criada
                 elif current_stage == "agendamento_marcado":
-                    state["next_action"] = "end"  # Já agendado, nada a fazer
+                    state["next_action"] = "end"  # Já agendado (status legado)
                 elif current_stage == "perdido":
                     state["next_action"] = "end"  # Lead perdido, nada a fazer
                 else:
@@ -801,14 +806,295 @@ REGRAS CRÍTICAS:
 
             state["messages"] = messages
             state["lead"] = lead
-            state["current_stage"] = "agendamento_marcado"
-            state["next_action"] = "end"
+            state["current_stage"] = "aguardando_escolha_horario"
+            state["next_action"] = "confirm"
+            state["available_slots"] = available_slots  # Guardar slots para confirmação
 
             logger.info(f"Oferecendo horários de agendamento para {lead.nome}")
             return state
 
         except Exception as e:
             logger.error(f"Erro no schedule_meeting: {e}")
+            return state
+
+    def confirm_meeting(self, state: AgentState) -> AgentState:
+        """Node: Confirmar horário escolhido e criar evento no Google Calendar"""
+        try:
+            lead = state["lead"]
+            messages = state["messages"]
+            available_slots = state.get("available_slots", [])
+
+            # Pegar última mensagem do lead
+            last_message = None
+            for msg in reversed(messages):
+                if isinstance(msg, HumanMessage):
+                    last_message = msg.content.lower().strip()
+                    break
+
+            if not last_message:
+                logger.warning("⚠️ Nenhuma mensagem do lead encontrada")
+                state["next_action"] = "end"
+                return state
+
+            logger.info(f"📝 Processando escolha do lead: {last_message}")
+
+            # DETECTAR SE LEAD ESCOLHEU UM HORÁRIO
+            # Palavras-chave que indicam escolha de horário
+            escolha_keywords = ["pode", "vamos", "aceito", "quero", "sim", "ok", "beleza", "perfeito", "confirmo"]
+
+            # Detectar dias da semana
+            dias_map = {
+                "segunda": 0, "seg": 0,
+                "terça": 1, "terca": 1, "ter": 1,
+                "quarta": 2, "qua": 2,
+                "quinta": 3, "qui": 3,
+                "sexta": 4, "sex": 4,
+                "sábado": 5, "sabado": 5, "sab": 5,
+                "domingo": 6, "dom": 6
+            }
+
+            # Detectar horários (formato: 10h, 14h30, 10:00, 14:30)
+            import re
+            hora_pattern = r'(\d{1,2})(?:h|:)?(\d{2})?'
+            hora_match = re.search(hora_pattern, last_message)
+
+            # Detectar dia da semana
+            dia_escolhido = None
+            for dia, weekday in dias_map.items():
+                if dia in last_message:
+                    dia_escolhido = weekday
+                    break
+
+            # Tentar encontrar o slot correspondente
+            from datetime import datetime, timedelta
+            import pytz
+
+            chosen_slot = None
+
+            if hora_match and dia_escolhido is not None:
+                hora = int(hora_match.group(1))
+                minuto = int(hora_match.group(2)) if hora_match.group(2) else 0
+
+                logger.info(f"🔍 Lead escolheu: {list(dias_map.keys())[list(dias_map.values()).index(dia_escolhido)]} {hora}:{minuto:02d}")
+
+                # Procurar slot correspondente nos slots disponíveis
+                for slot in available_slots:
+                    slot_start = slot['start']
+                    if isinstance(slot_start, str):
+                        slot_start = datetime.fromisoformat(slot_start)
+
+                    if slot_start.weekday() == dia_escolhido and slot_start.hour == hora and slot_start.minute == minuto:
+                        chosen_slot = slot
+                        logger.success(f"✅ Slot encontrado: {slot['display']}")
+                        break
+
+            # Se não encontrou slot exato, tentar criar um datetime baseado na escolha
+            if not chosen_slot and hora_match and dia_escolhido is not None:
+                hora = int(hora_match.group(1))
+                minuto = int(hora_match.group(2)) if hora_match.group(2) else 0
+
+                # Calcular próxima ocorrência do dia da semana
+                tz = pytz.timezone('America/Sao_Paulo')
+                now = datetime.now(tz)
+                days_ahead = (dia_escolhido - now.weekday()) % 7
+                if days_ahead == 0:
+                    days_ahead = 7  # Próxima semana se for hoje
+
+                target_date = now + timedelta(days=days_ahead)
+                meeting_datetime = target_date.replace(hour=hora, minute=minuto, second=0, microsecond=0)
+
+                chosen_slot = {
+                    'start': meeting_datetime,
+                    'end': meeting_datetime + timedelta(minutes=60),
+                    'display': meeting_datetime.strftime('%A, %d/%m às %H:%M')
+                }
+                logger.info(f"📅 Criado slot customizado: {chosen_slot['display']}")
+
+            # Se encontrou um horário, processar
+            if chosen_slot:
+                # Verificar se já tem email
+                if not lead.email or '@' not in lead.email:
+                    # PEDIR EMAIL
+                    system_prompt = f"""{SYSTEM_PROMPTS["solicitar_email"]}
+
+HORÁRIO ESCOLHIDO: {chosen_slot['display']}
+
+Sua resposta deve ser CURTA (máximo 2 linhas) e pedir o email para enviar o convite do Google Calendar."""
+
+                    system_msg = SystemMessage(content=system_prompt)
+                    response = self.llm.invoke([system_msg] + list(messages))
+
+                    messages.append(response)
+                    state["messages"] = messages
+                    state["current_stage"] = "aguardando_email"
+                    state["next_action"] = "confirm"
+                    state["chosen_slot"] = chosen_slot
+
+                    logger.info("📧 Solicitando email do lead para criar reunião")
+                    return state
+
+                # SE TEM EMAIL, CRIAR REUNIÃO
+                else:
+                    logger.info(f"✅ Lead tem email: {lead.email} - criando reunião...")
+
+                    # Criar reunião no Google Calendar usando ThreadPoolExecutor
+                    import asyncio
+                    from concurrent.futures import ThreadPoolExecutor
+
+                    def run_async_in_thread():
+                        new_loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(new_loop)
+                        try:
+                            meeting_dt = chosen_slot['start']
+                            if isinstance(meeting_dt, str):
+                                meeting_dt = datetime.fromisoformat(meeting_dt)
+
+                            return new_loop.run_until_complete(
+                                google_calendar_service.create_meeting(
+                                    lead_name=lead.nome,
+                                    lead_email=lead.email,
+                                    lead_phone=lead.telefone,
+                                    meeting_datetime=meeting_dt,
+                                    duration_minutes=60,
+                                    empresa=lead.empresa
+                                )
+                            )
+                        finally:
+                            new_loop.close()
+
+                    meeting_result = None
+                    try:
+                        with ThreadPoolExecutor(max_workers=1) as executor:
+                            future = executor.submit(run_async_in_thread)
+                            meeting_result = future.result(timeout=10)
+                    except Exception as calendar_error:
+                        logger.error(f"❌ Erro ao criar reunião: {calendar_error}")
+
+                    # Confirmar agendamento
+                    meeting_dt = chosen_slot['start']
+                    if isinstance(meeting_dt, str):
+                        meeting_dt = datetime.fromisoformat(meeting_dt)
+
+                    data_hora_formatada = meeting_dt.strftime('%d/%m/%Y às %H:%M')
+
+                    system_prompt = f"""{SYSTEM_PROMPTS["confirmar_agendamento"]}
+
+DATA/HORA: {data_hora_formatada}
+EMAIL DO LEAD: {lead.email}
+
+Confirme o agendamento de forma CURTA (máximo 3-4 linhas)."""
+
+                    system_msg = SystemMessage(content=system_prompt)
+                    response = self.llm.invoke([system_msg] + list(messages))
+
+                    messages.append(response)
+                    lead.status = LeadStatus.AGENDAMENTO_MARCADO
+                    lead.lead_score = 95
+
+                    state["messages"] = messages
+                    state["lead"] = lead
+                    state["current_stage"] = "agendamento_confirmado"
+                    state["next_action"] = "end"
+
+                    logger.success(f"✅ Reunião confirmada para {lead.nome} em {data_hora_formatada}")
+                    return state
+
+            # SE NÃO DETECTOU HORÁRIO, verificar se é email
+            elif '@' in last_message:
+                # LEAD ENVIOU EMAIL
+                lead.email = last_message
+                logger.info(f"📧 Email capturado: {lead.email}")
+
+                # Recuperar slot escolhido anteriormente
+                chosen_slot = state.get("chosen_slot")
+
+                if chosen_slot:
+                    # Criar reunião
+                    import asyncio
+                    from concurrent.futures import ThreadPoolExecutor
+
+                    def run_async_in_thread():
+                        new_loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(new_loop)
+                        try:
+                            meeting_dt = chosen_slot['start']
+                            if isinstance(meeting_dt, str):
+                                meeting_dt = datetime.fromisoformat(meeting_dt)
+
+                            return new_loop.run_until_complete(
+                                google_calendar_service.create_meeting(
+                                    lead_name=lead.nome,
+                                    lead_email=lead.email,
+                                    lead_phone=lead.telefone,
+                                    meeting_datetime=meeting_dt,
+                                    duration_minutes=60,
+                                    empresa=lead.empresa
+                                )
+                            )
+                        finally:
+                            new_loop.close()
+
+                    meeting_result = None
+                    try:
+                        with ThreadPoolExecutor(max_workers=1) as executor:
+                            future = executor.submit(run_async_in_thread)
+                            meeting_result = future.result(timeout=10)
+                    except Exception as calendar_error:
+                        logger.error(f"❌ Erro ao criar reunião: {calendar_error}")
+
+                    # Confirmar agendamento
+                    meeting_dt = chosen_slot['start']
+                    if isinstance(meeting_dt, str):
+                        meeting_dt = datetime.fromisoformat(meeting_dt)
+
+                    data_hora_formatada = meeting_dt.strftime('%d/%m/%Y às %H:%M')
+
+                    system_prompt = f"""{SYSTEM_PROMPTS["confirmar_agendamento"]}
+
+DATA/HORA: {data_hora_formatada}
+EMAIL DO LEAD: {lead.email}
+
+Confirme o agendamento de forma CURTA (máximo 3-4 linhas)."""
+
+                    system_msg = SystemMessage(content=system_prompt)
+                    response = self.llm.invoke([system_msg] + list(messages))
+
+                    messages.append(response)
+                    lead.status = LeadStatus.AGENDAMENTO_MARCADO
+                    lead.lead_score = 95
+
+                    state["messages"] = messages
+                    state["lead"] = lead
+                    state["current_stage"] = "agendamento_confirmado"
+                    state["next_action"] = "end"
+
+                    logger.success(f"✅ Reunião confirmada para {lead.nome} em {data_hora_formatada}")
+                    return state
+
+            # Se não entendeu, pedir clarificação
+            logger.warning("⚠️ Não foi possível detectar escolha de horário ou email")
+
+            system_prompt = """Você é Smith, da AutomateX.
+
+O lead não escolheu um horário claro. Peça para ele escolher um dos horários listados anteriormente de forma DIRETA (máximo 2 linhas).
+
+Exemplo: "Qual desses horários funciona melhor pra você? E qual seu email para eu enviar o convite?"
+"""
+
+            system_msg = SystemMessage(content=system_prompt)
+            response = self.llm.invoke([system_msg] + list(messages))
+
+            messages.append(response)
+            state["messages"] = messages
+            state["next_action"] = "confirm"
+
+            return state
+
+        except Exception as e:
+            logger.error(f"Erro no confirm_meeting: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            state["next_action"] = "end"
             return state
 
     def handle_followup(self, state: AgentState) -> AgentState:
@@ -872,6 +1158,7 @@ Seja prestativo e agregue valor."""
             "check_qualification": "check_qualification",
             "generate_roi": "generate_roi",
             "schedule": "schedule_meeting",
+            "confirm": "confirm_meeting",
             "followup": "handle_followup",
             "end": END
         }
@@ -893,6 +1180,7 @@ Seja prestativo e agregue valor."""
         workflow.add_node("check_qualification", self.check_qualification)
         workflow.add_node("generate_roi", self.generate_roi)
         workflow.add_node("schedule_meeting", self.schedule_meeting)
+        workflow.add_node("confirm_meeting", self.confirm_meeting)
         workflow.add_node("handle_followup", self.handle_followup)
 
         # Definir entry point
@@ -917,6 +1205,10 @@ Seja prestativo e agregue valor."""
         )
         workflow.add_conditional_edges(
             "schedule_meeting",
+            self.route_conversation
+        )
+        workflow.add_conditional_edges(
+            "confirm_meeting",
             self.route_conversation
         )
         workflow.add_conditional_edges(

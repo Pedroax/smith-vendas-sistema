@@ -465,7 +465,8 @@ async def process_with_agent(lead: Lead, message: str) -> tuple[str, bool]:
             lead=lead,
             current_stage=lead.status.value if hasattr(lead.status, 'value') else lead.status,
             next_action="continue",
-            requires_human_approval=False
+            requires_human_approval=False,
+            available_slots=[]
         )
 
         logger.info(f"🤖 Processando com smith_agent (LangGraph): stage={initial_state['current_stage']}")

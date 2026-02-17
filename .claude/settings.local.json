@@ -82,7 +82,11 @@
       "WebFetch(domain:documenter.getpostman.com)",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:docs.uazapi.com)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(railway status:*)",
+      "Bash(git restore:*)",
+      "Bash(uma conversa de 30min para eu te mostrar como podemos resolver isso)",
+      "Bash(rapidamente?)"
     ]
   }
 }

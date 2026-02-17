@@ -513,19 +513,20 @@ TOM: Empático, urgente, específico"""
                 proximo_passo = "urgencia_e_agendamento"
                 contexto_estrategico = f"""SITUAÇÃO ATUAL: Dor mapeada, lead engajado.
 
-PRÓXIMO PASSO: Entender urgência e JÁ PARTIR PRO AGENDAMENTO.
+PRÓXIMO PASSO: Entender urgência e JÁ OFERECER AGENDAMENTO.
 
 PERGUNTE DE FORMA DIRETA:
 "Isso é urgente pra vocês ou dá pra deixar pros próximos meses?"
 
 SE RESPONDER "URGENTE" / "RÁPIDO" / "AGORA":
--> PARTA IMEDIATAMENTE PRO AGENDAMENTO (veja seção AGENDAMENTO abaixo)
+-> SUA RESPOSTA DEVE SER EXATAMENTE ASSIM:
+"Perfeito, {lead.nome}! Com essa urgência, vamos agilizar. Que tal agendarmos uma conversa de 30min para eu te mostrar como podemos resolver isso rapidamente? Posso te passar alguns horários disponíveis?"
+
+IMPORTANTE: Sua resposta DEVE SEMPRE TERMINAR COM UMA PERGUNTA CLARA SOBRE AGENDAMENTO.
+NÃO responda apenas "vamos trabalhar juntos" ou "podemos priorizar" - isso NÃO é oferecer agendamento!
 
 SE RESPONDER "PRÓXIMOS MESES" / "SEM PRESSA":
--> Qualifique normalmente mas com menos prioridade
-
-IMPORTANTE: Se lead está qualificado (decisor + dor + urgência), NÃO PERGUNTE "posso te ajudar com mais alguma coisa?"
--> VÁ DIRETO PARA O AGENDAMENTO!"""
+-> Qualifique normalmente mas com menos prioridade"""
 
             else:
                 # LEAD TOTALMENTE QUALIFICADO - PARTIR PRO AGENDAMENTO!

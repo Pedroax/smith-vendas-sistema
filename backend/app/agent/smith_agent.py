@@ -374,28 +374,55 @@ class SmithAgent:
             lead = state["lead"]
             messages = state["messages"]
 
-            # DETECTAR SE LEAD ACEITOU AGENDAR (última mensagem do usuário)
-            last_user_message = ""
+            # DETECTAR SE LEAD ACEITOU AGENDAR (últimas 2 mensagens)
+            last_messages = []
             if messages:
+                count = 0
                 for msg in reversed(messages):
                     if isinstance(msg, HumanMessage):
-                        last_user_message = msg.content.lower().strip()
-                        break
+                        last_messages.append(msg.content.lower().strip())
+                        count += 1
+                        if count >= 2:
+                            break
 
             # Palavras que indicam aceitação de agendamento
-            aceita_agendar_keywords = ["sim", "pode", "vamos", "aceito", "quero", "podemos", "ok", "beleza", "perfeito", "ótimo", "confirmo", "agenda", "marcar", "próxima", "semana"]
-            aceitou_agendar = any(keyword in last_user_message for keyword in aceita_agendar_keywords)
+            aceita_agendar_keywords = ["sim", "pode", "vamos", "aceito", "quero", "podemos", "ok", "beleza", "perfeito", "ótimo", "confirmo", "agenda", "marcar", "próxima", "semana", "agendar", "reunião", "conversar"]
 
-            # Se lead JÁ QUALIFICADO (tem urgência) e ACEITOU AGENDAR → IR DIRETO PRO SCHEDULE
-            lead_ja_qualificado = (
-                lead.qualification_data and
-                lead.qualification_data.urgency and
-                lead.qualification_data.is_decision_maker and
-                lead.qualification_data.maior_desafio
+            # Verificar se ACEITOU em qualquer das últimas mensagens
+            aceitou_agendar = any(
+                any(keyword in msg for keyword in aceita_agendar_keywords)
+                for msg in last_messages
             )
 
-            if lead_ja_qualificado and aceitou_agendar:
-                logger.info(f"🎯 Lead {lead.nome} JÁ QUALIFICADO e ACEITOU AGENDAR - indo direto para schedule_meeting")
+            # Verificar se IA OFERECEU agendamento recentemente (penúltima mensagem do assistant)
+            ia_ofereceu_agendamento = False
+            if messages:
+                for msg in reversed(messages):
+                    if isinstance(msg, AIMessage):
+                        msg_lower = msg.content.lower()
+                        ofereceu_keywords = ["agendar", "reunião", "conversa", "momento para discutir", "horário", "agenda"]
+                        ia_ofereceu_agendamento = any(kw in msg_lower for kw in ofereceu_keywords)
+                        break
+
+            # CONDIÇÃO 1: Lead com urgência que aceitou agendar
+            tem_urgencia = (
+                lead.qualification_data and
+                lead.qualification_data.urgency
+            )
+
+            # CONDIÇÃO 2: IA ofereceu agendamento E lead aceitou
+            lead_aceitou_oferta = ia_ofereceu_agendamento and aceitou_agendar
+
+            # IR DIRETO PRO SCHEDULE se:
+            # - Lead tem urgência E aceitou, OU
+            # - IA ofereceu agendamento E lead aceitou
+            if (tem_urgencia and aceitou_agendar) or lead_aceitou_oferta:
+                logger.info(f"🎯 Lead {lead.nome} ACEITOU AGENDAR - indo direto para schedule")
+                logger.info(f"   - Tem urgência: {tem_urgencia}")
+                logger.info(f"   - IA ofereceu: {ia_ofereceu_agendamento}")
+                logger.info(f"   - Lead aceitou: {aceitou_agendar}")
+                logger.info(f"   - Última mensagem: {last_messages[0] if last_messages else 'N/A'}")
+
                 state["next_action"] = "schedule"
                 state["lead"] = lead
                 state["current_stage"] = "agendamento_marcado"

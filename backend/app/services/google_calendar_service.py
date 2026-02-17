@@ -270,6 +270,9 @@ class GoogleCalendarService:
             search_end = now + timedelta(days=days_ahead)
 
             # Buscar eventos existentes no Google Calendar
+            logger.info(f"🔍 Buscando eventos no calendário: {settings.google_calendar_id}")
+            logger.info(f"🔍 Período: {search_start.isoformat()} até {search_end.isoformat()}")
+
             events_result = self.service.events().list(
                 calendarId=settings.google_calendar_id,
                 timeMin=search_start.isoformat(),
@@ -280,6 +283,18 @@ class GoogleCalendarService:
 
             existing_events = events_result.get('items', [])
             logger.info(f"📅 Encontrados {len(existing_events)} eventos já agendados")
+
+            # LOG DETALHADO: Mostrar eventos encontrados
+            if existing_events:
+                logger.info("📋 EVENTOS ENCONTRADOS:")
+                for evt in existing_events:
+                    evt_start = evt.get('start', {}).get('dateTime', evt.get('start', {}).get('date'))
+                    evt_summary = evt.get('summary', 'Sem título')
+                    logger.info(f"   - {evt_summary} em {evt_start}")
+            else:
+                logger.warning("⚠️ NENHUM evento retornado pela API do Google Calendar")
+                logger.warning(f"⚠️ Verifique se o calendário {settings.google_calendar_id} está compartilhado com a service account")
+                logger.warning(f"⚠️ Service account: smith-calendar-service@gen-lang-client-0661934225.iam.gserviceaccount.com")
 
             # Gerar slots candidatos
             available_slots = []

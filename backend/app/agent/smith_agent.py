@@ -688,6 +688,11 @@ OFEREÇA AS 2 OPÇÕES DE FORMA CLARA E OBJETIVA.""")
 
             # Calcular e gerar ROI (chamar async de forma síncrona)
             import asyncio
+            import nest_asyncio
+
+            # Permitir event loops aninhados
+            nest_asyncio.apply()
+
             try:
                 loop = asyncio.get_event_loop()
             except RuntimeError:
@@ -726,14 +731,21 @@ OFEREÇA AS 2 OPÇÕES DE FORMA CLARA E OBJETIVA.""")
 
             if google_calendar_service.is_available():
                 try:
-                    # Chamar função async de forma síncrona usando asyncio
+                    # Chamar função async de forma síncrona usando nest_asyncio
                     import asyncio
+                    import nest_asyncio
+
+                    # Permitir event loops aninhados (resolve "event loop is already running")
+                    nest_asyncio.apply()
+
+                    # Pegar ou criar event loop
                     try:
                         loop = asyncio.get_event_loop()
                     except RuntimeError:
                         loop = asyncio.new_event_loop()
                         asyncio.set_event_loop(loop)
 
+                    logger.info("📅 Buscando horários disponíveis do Google Calendar...")
                     available_slots = loop.run_until_complete(
                         google_calendar_service.get_available_slots(
                             days_ahead=7,
@@ -746,12 +758,16 @@ OFEREÇA AS 2 OPÇÕES DE FORMA CLARA E OBJETIVA.""")
                         slots_text = "Horários disponíveis:\n"
                         for i, slot in enumerate(available_slots, 1):
                             slots_text += f"{i}. {slot['display']}\n"
+                        logger.success(f"✅ {len(available_slots)} horários encontrados e formatados para mostrar ao lead")
+                    else:
+                        logger.warning("⚠️ Nenhum horário disponível retornado pelo Google Calendar")
 
-                    logger.info(f"📅 {len(available_slots)} horários disponíveis encontrados")
                 except Exception as calendar_error:
                     logger.error(f"❌ Erro ao buscar horários: {calendar_error}")
+                    import traceback
+                    logger.error(f"Traceback: {traceback.format_exc()}")
             else:
-                logger.warning("Google Calendar não disponível - usando horários fictícios")
+                logger.warning("⚠️ Google Calendar não disponível - usando mensagem padrão")
 
             # System prompt COM horários reais
             system_prompt = f"""{SYSTEM_PROMPTS["agendamento"]}

@@ -686,20 +686,21 @@ OFEREÇA AS 2 OPÇÕES DE FORMA CLARA E OBJETIVA.""")
                 state["next_action"] = "qualify"
                 return state
 
-            # Calcular e gerar ROI (chamar async de forma síncrona)
+            # Calcular e gerar ROI (chamar async usando thread separada)
             import asyncio
-            import nest_asyncio
+            from concurrent.futures import ThreadPoolExecutor
 
-            # Permitir event loops aninhados
-            nest_asyncio.apply()
+            def run_roi_in_thread():
+                new_loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(new_loop)
+                try:
+                    return new_loop.run_until_complete(roi_generator.generate_and_send(lead))
+                finally:
+                    new_loop.close()
 
-            try:
-                loop = asyncio.get_event_loop()
-            except RuntimeError:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-
-            roi_analysis = loop.run_until_complete(roi_generator.generate_and_send(lead))
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(run_roi_in_thread)
+                roi_analysis = future.result(timeout=30)  # 30s timeout
 
             if roi_analysis:
                 lead.roi_analysis = roi_analysis
@@ -731,28 +732,33 @@ OFEREÇA AS 2 OPÇÕES DE FORMA CLARA E OBJETIVA.""")
 
             if google_calendar_service.is_available():
                 try:
-                    # Chamar função async de forma síncrona usando nest_asyncio
+                    # Chamar função async usando novo event loop isolado
                     import asyncio
-                    import nest_asyncio
-
-                    # Permitir event loops aninhados (resolve "event loop is already running")
-                    nest_asyncio.apply()
-
-                    # Pegar ou criar event loop
-                    try:
-                        loop = asyncio.get_event_loop()
-                    except RuntimeError:
-                        loop = asyncio.new_event_loop()
-                        asyncio.set_event_loop(loop)
+                    from concurrent.futures import ThreadPoolExecutor
+                    import threading
 
                     logger.info("📅 Buscando horários disponíveis do Google Calendar...")
-                    available_slots = loop.run_until_complete(
-                        google_calendar_service.get_available_slots(
-                            days_ahead=7,
-                            num_slots=3,
-                            duration_minutes=60
-                        )
-                    )
+
+                    # Criar função wrapper que roda em thread separada
+                    def run_async_in_thread():
+                        # Criar novo event loop para esta thread
+                        new_loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(new_loop)
+                        try:
+                            return new_loop.run_until_complete(
+                                google_calendar_service.get_available_slots(
+                                    days_ahead=7,
+                                    num_slots=3,
+                                    duration_minutes=60
+                                )
+                            )
+                        finally:
+                            new_loop.close()
+
+                    # Executar em thread separada para evitar conflito com uvloop
+                    with ThreadPoolExecutor(max_workers=1) as executor:
+                        future = executor.submit(run_async_in_thread)
+                        available_slots = future.result(timeout=10)  # 10s timeout
 
                     if available_slots:
                         slots_text = "Horários disponíveis:\n"

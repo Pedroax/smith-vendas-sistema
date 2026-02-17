@@ -675,7 +675,7 @@ OFEREÇA AS 2 OPÇÕES DE FORMA CLARA E OBJETIVA.""")
             state["next_action"] = "qualify"
             return state
 
-    async def generate_roi(self, state: AgentState) -> AgentState:
+    def generate_roi(self, state: AgentState) -> AgentState:
         """Node: Gerar e enviar análise de ROI"""
         try:
             lead = state["lead"]
@@ -686,8 +686,15 @@ OFEREÇA AS 2 OPÇÕES DE FORMA CLARA E OBJETIVA.""")
                 state["next_action"] = "qualify"
                 return state
 
-            # Calcular e gerar ROI
-            roi_analysis = await roi_generator.generate_and_send(lead)
+            # Calcular e gerar ROI (chamar async de forma síncrona)
+            import asyncio
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+
+            roi_analysis = loop.run_until_complete(roi_generator.generate_and_send(lead))
 
             if roi_analysis:
                 lead.roi_analysis = roi_analysis
@@ -707,7 +714,7 @@ OFEREÇA AS 2 OPÇÕES DE FORMA CLARA E OBJETIVA.""")
             logger.error(f"Erro no generate_roi: {e}")
             return state
 
-    async def schedule_meeting(self, state: AgentState) -> AgentState:
+    def schedule_meeting(self, state: AgentState) -> AgentState:
         """Node: Agendar reunião com o closer"""
         try:
             lead = state["lead"]
@@ -719,10 +726,20 @@ OFEREÇA AS 2 OPÇÕES DE FORMA CLARA E OBJETIVA.""")
 
             if google_calendar_service.is_available():
                 try:
-                    available_slots = await google_calendar_service.get_available_slots(
-                        days_ahead=7,
-                        num_slots=3,
-                        duration_minutes=60
+                    # Chamar função async de forma síncrona usando asyncio
+                    import asyncio
+                    try:
+                        loop = asyncio.get_event_loop()
+                    except RuntimeError:
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+
+                    available_slots = loop.run_until_complete(
+                        google_calendar_service.get_available_slots(
+                            days_ahead=7,
+                            num_slots=3,
+                            duration_minutes=60
+                        )
                     )
 
                     if available_slots:

@@ -468,28 +468,54 @@ class SmithAgent:
                 proximo_passo = "empresa_e_cargo"
                 contexto_estrategico = f"""SITUAÇÃO ATUAL: Nome capturado ({lead.nome}).
 
-PRÓXIMO PASSO: Capturar empresa e cargo.
+PRÓXIMO PASSO OBRIGATÓRIO: Capturar empresa e cargo.
 
-PERGUNTE DE FORMA NATURAL:
-"{lead.nome}, me conta: qual é sua empresa e qual seu cargo lá?"
+RESPONDA EXATAMENTE ISTO (NADA MAIS):
+"{lead.nome}, qual é sua empresa e qual seu cargo lá?"
 
-IMPORTANTE:
-- Tom: consultivo, leve
-- Essas informações ajudam a personalizar a abordagem"""
+REGRAS ABSOLUTAS:
+- Faça APENAS esta pergunta
+- NÃO mencione agendamento, email, reunião ou call
+- NÃO invente perguntas extras
+- Máximo 1 linha
+- Aguarde resposta do lead"""
 
             elif not lead.qualification_data or not lead.qualification_data.funcionarios_atendimento:
                 proximo_passo = "contexto_operacional"
-                contexto_estrategico = f"""SITUAÇÃO ATUAL: Empresa e cargo capturados.
 
-PRÓXIMO PASSO: Entender contexto operacional.
+                # Verificar se já tem faturamento para não perguntar de novo
+                ja_tem_faturamento = lead.qualification_data and lead.qualification_data.faturamento_anual
 
-PERGUNTE DE FORMA CONSULTIVA (juntar 2 perguntas):
-"{lead.nome}, pra eu entender melhor como posso te ajudar: quantas pessoas você tem no time de vendas e qual a faixa de faturamento mensal da empresa?"
+                if ja_tem_faturamento:
+                    # Se JÁ tem faturamento, perguntar SÓ sobre funcionários
+                    contexto_estrategico = f"""SITUAÇÃO ATUAL: Empresa, cargo e faturamento capturados.
 
-IMPORTANTE:
-- Tom: consultivo, não interrogatório
-- Se ele responder apenas uma parte, pegar a outra naturalmente
-- Personalizar com insight baseado no porte (pequeno/médio/grande)"""
+PRÓXIMO PASSO OBRIGATÓRIO: Perguntar quantos funcionários no time.
+
+RESPONDA EXATAMENTE ISTO (NADA MAIS):
+"{lead.nome}, quantas pessoas você tem no time de vendas?"
+
+REGRAS ABSOLUTAS:
+- Faça APENAS esta pergunta
+- NÃO mencione agendamento, email, reunião ou call
+- NÃO invente perguntas extras
+- Máximo 1 linha
+- Aguarde resposta do lead"""
+                else:
+                    # Se NÃO tem faturamento, perguntar ambos
+                    contexto_estrategico = f"""SITUAÇÃO ATUAL: Empresa e cargo capturados.
+
+PRÓXIMO PASSO OBRIGATÓRIO: Perguntar sobre equipe e faturamento.
+
+RESPONDA EXATAMENTE ISTO (NADA MAIS):
+"{lead.nome}, pra eu entender melhor: quantas pessoas você tem no time de vendas e qual o faturamento mensal da empresa?"
+
+REGRAS ABSOLUTAS:
+- Faça APENAS esta pergunta
+- NÃO mencione agendamento, email, reunião ou call
+- NÃO invente perguntas extras
+- Máximo 1 linha
+- Aguarde resposta do lead"""
 
             elif not lead.qualification_data or not lead.qualification_data.faturamento_anual:
                 proximo_passo = "faturamento"
@@ -506,48 +532,49 @@ TOM: Direto mas justificado (mostra PORQUÊ importa)"""
                 proximo_passo = "decisor"
                 contexto_estrategico = f"""SITUAÇÃO ATUAL: Porte mapeado.
 
-PRÓXIMO PASSO: Identificar decisor.
+PRÓXIMO PASSO OBRIGATÓRIO: Identificar decisor.
 
-PERGUNTE APENAS ISSO (UMA PERGUNTA):
-"{lead.nome}, você é o responsável por decisões de tecnologia na AX Code?"
+RESPONDA EXATAMENTE ISTO (NADA MAIS):
+"{lead.nome}, você é o responsável por decisões de tecnologia na {lead.empresa or 'empresa'}?"
 
 REGRAS ABSOLUTAS:
 - Faça APENAS esta pergunta
-- NÃO ofereça agendamento ainda
-- NÃO mencione "próxima conversa" ou "call"
-- Seja direto, 1 linha só"""
+- NÃO ofereça agendamento, NÃO mencione email
+- NÃO mencione "call", "reunião", "conversa"
+- NÃO invente perguntas extras
+- Máximo 1 linha"""
 
             elif not lead.qualification_data or not lead.qualification_data.maior_desafio or lead.qualification_data.maior_desafio.strip() == "":
                 proximo_passo = "dor_principal"
                 contexto_estrategico = f"""SITUAÇÃO ATUAL: Decisor identificado.
 
-PRÓXIMO PASSO CRÍTICO: Mapear DOR.
+PRÓXIMO PASSO OBRIGATÓRIO: Mapear DOR.
 
-PERGUNTE APENAS SOBRE A DOR (UMA PERGUNTA):
+RESPONDA EXATAMENTE ISTO (NADA MAIS):
 "Qual o principal problema que tá impedindo vocês de crescer mais rápido? Perda de leads? Atendimento desorganizado? Processos manuais?"
 
 REGRAS ABSOLUTAS:
 - Faça APENAS esta pergunta sobre dor
-- NÃO ofereça agendamento ainda
+- NÃO ofereça agendamento, NÃO mencione email
 - NÃO mencione "call", "reunião", "conversa"
-- Máximo 2 linhas
-- Foco: descobrir a DOR"""
+- NÃO invente perguntas extras
+- Máximo 2 linhas"""
 
             elif not lead.qualification_data or not lead.qualification_data.urgency or lead.qualification_data.urgency.strip() == "":
                 proximo_passo = "urgencia"
                 contexto_estrategico = f"""SITUAÇÃO ATUAL: Dor mapeada.
 
-PRÓXIMO PASSO: Mapear urgência.
+PRÓXIMO PASSO OBRIGATÓRIO: Mapear urgência.
 
-PERGUNTE APENAS SOBRE URGÊNCIA (UMA PERGUNTA):
+RESPONDA EXATAMENTE ISTO (NADA MAIS):
 "Isso é urgente pra vocês ou dá pra deixar pros próximos meses?"
 
 REGRAS ABSOLUTAS:
 - Faça APENAS esta pergunta
-- NÃO ofereça agendamento ainda
+- NÃO ofereça agendamento, NÃO mencione email
 - NÃO mencione "call", "reunião", "conversa"
-- Máximo 1 linha
-- Aguarde resposta antes de prosseguir"""
+- NÃO invente perguntas extras
+- Máximo 1 linha"""
 
             else:
                 # LEAD TOTALMENTE QUALIFICADO - OFERECER AGENDAMENTO!
@@ -557,17 +584,19 @@ REGRAS ABSOLUTAS:
 
                 contexto_estrategico = f"""LEAD TOTALMENTE QUALIFICADO!
 
-PRÓXIMO PASSO: OFERECER agendamento (PERGUNTAR, não afirmar).
+PRÓXIMO PASSO OBRIGATÓRIO: OFERECER agendamento.
 
-RESPOSTA EXATA:
+RESPONDA EXATAMENTE ISTO (NADA MAIS):
 "Perfeito, {lead.nome}! Com essa urgência, que tal agendarmos uma conversa de 30min para eu te mostrar como podemos resolver isso rapidamente?"
 
 REGRAS ABSOLUTAS:
 - PERGUNTE se quer agendar (não afirme que vai agendar)
 - Termine com ponto de interrogação
+- NÃO peça email ainda
 - Máximo 2 linhas
 - Aguarde resposta "sim" do lead
-- NÃO mostre horários ainda (só após lead aceitar)"""
+- NÃO mostre horários ainda (só após lead aceitar)
+- NÃO invente perguntas extras"""
 
             # Adicionar contexto do lead
             context_msg = SystemMessage(content=f"""DADOS JÁ CAPTURADOS:

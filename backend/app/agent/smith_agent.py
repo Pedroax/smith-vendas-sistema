@@ -495,7 +495,7 @@ PERGUNTE DE FORMA DIRETA:
 TOM: Direto, consultivo, focado em DOR
 IMPORTANTE: Esta é a pergunta mais importante! A dor vai definir todo o pitch."""
 
-            elif not lead.qualification_data or not lead.qualification_data.maior_desafio:
+            elif not lead.qualification_data or not lead.qualification_data.maior_desafio or lead.qualification_data.maior_desafio.strip() == "":
                 proximo_passo = "dor_principal"
                 contexto_estrategico = f"""SITUAÇÃO ATUAL: Decisor identificado.
 
@@ -518,7 +518,7 @@ Exemplos baseados na dor:
 
 TOM: Empático, urgente, específico"""
 
-            elif not lead.qualification_data or not lead.qualification_data.urgency:
+            elif not lead.qualification_data or not lead.qualification_data.urgency or lead.qualification_data.urgency.strip() == "":
                 proximo_passo = "urgencia_e_agendamento"
                 contexto_estrategico = f"""SITUAÇÃO ATUAL: Dor mapeada, lead engajado.
 
@@ -788,15 +788,15 @@ OFEREÇA AS 2 OPÇÕES DE FORMA CLARA E OBJETIVA.""")
             # System prompt COM horários reais
             system_prompt = f"""{SYSTEM_PROMPTS["agendamento"]}
 
-IMPORTANTE: Use EXATAMENTE estes horários disponíveis do Google Calendar:
+HORÁRIOS DISPONÍVEIS (copie EXATAMENTE como estão abaixo):
 {slots_text}
 
 REGRAS CRÍTICAS:
-- NÃO invente horários! Use apenas os listados acima
+- Copie os horários EXATAMENTE como fornecidos acima (com dia da semana ou "Amanhã")
+- NÃO simplifique para apenas horas (ex: NÃO use "11:00", use "Amanhã às 11:00")
+- NÃO invente horários que não estão na lista
 - SEMPRE peça o email do lead junto com a escolha do horário
-- NÃO invente emails como "pedro@teste.com" ou similares
-- NÃO crie links falsos ou mencione emails que o lead não forneceu
-- AGUARDE o lead informar horário E email antes de confirmar qualquer agendamento"""
+- Formatação: bullets (•) um por linha"""
 
             system_msg = SystemMessage(content=system_prompt)
 

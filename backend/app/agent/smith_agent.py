@@ -433,15 +433,24 @@ class SmithAgent:
                 lead.qualification_data.urgency and lead.qualification_data.urgency.strip() != ""
             )
 
+            # DEBUG: Mostrar valores da validação
+            logger.info(f"🔍 VALIDAÇÃO AGENDAMENTO para {lead.nome}:")
+            logger.info(f"   empresa: {lead.empresa}")
+            logger.info(f"   funcionarios_atendimento: {lead.qualification_data.funcionarios_atendimento if lead.qualification_data else None}")
+            logger.info(f"   faturamento_anual: {lead.qualification_data.faturamento_anual if lead.qualification_data else None}")
+            logger.info(f"   is_decision_maker: {lead.qualification_data.is_decision_maker if lead.qualification_data else None}")
+            logger.info(f"   maior_desafio: {lead.qualification_data.maior_desafio if lead.qualification_data else None}")
+            logger.info(f"   urgency: {lead.qualification_data.urgency if lead.qualification_data else None}")
+            logger.info(f"   todas_perguntas_respondidas: {todas_perguntas_respondidas}")
+            logger.info(f"   tem_urgencia: {tem_urgencia}")
+            logger.info(f"   aceitou_agendar: {aceitou_agendar}")
+            logger.info(f"   ia_ofereceu_agendamento: {ia_ofereceu_agendamento}")
+
             # IR DIRETO PRO SCHEDULE SOMENTE se:
             # - Todas perguntas respondidas E
             # - Lead tem urgência E lead aceitou agendar
             if todas_perguntas_respondidas and tem_urgencia and aceitou_agendar and ia_ofereceu_agendamento:
                 logger.info(f"🎯 Lead {lead.nome} TOTALMENTE QUALIFICADO e ACEITOU AGENDAR - indo para schedule")
-                logger.info(f"   - Todas perguntas: {todas_perguntas_respondidas}")
-                logger.info(f"   - Tem urgência: {tem_urgencia}")
-                logger.info(f"   - IA ofereceu: {ia_ofereceu_agendamento}")
-                logger.info(f"   - Lead aceitou: {aceitou_agendar}")
 
                 state["next_action"] = "schedule"
                 state["lead"] = lead

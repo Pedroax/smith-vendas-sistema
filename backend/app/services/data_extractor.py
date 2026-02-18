@@ -161,6 +161,10 @@ Retorne APENAS os dados que foram EXPLICITAMENTE mencionados. Se não foi mencio
             logger.info(f"   Empresa extraída: {extracted.empresa}")
             logger.info(f"   Cargo extraído: {extracted.cargo}")
             logger.info(f"   Setor extraído: {extracted.setor}")
+            logger.info(f"   Faturamento anual extraído: {extracted.faturamento_anual}")
+            logger.info(f"   Funcionários atendimento extraído: {extracted.funcionarios_atendimento}")
+            logger.info(f"   É decisor extraído: {extracted.is_decision_maker}")
+            logger.info(f"   Urgency extraído: {extracted.urgency}")
             logger.info(f"   Maior desafio extraído: {extracted.maior_desafio}")
 
             # Log dos dados extraídos

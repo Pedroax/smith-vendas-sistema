@@ -338,6 +338,8 @@ class SmithAgent:
                     state["next_action"] = "qualify"
                 elif current_stage == "qualificado":
                     state["next_action"] = "qualify"  # Lead qualificado mas ainda em conversa
+                elif current_stage == "horarios_oferecidos":
+                    state["next_action"] = "confirm"  # Lead viu horários, vai escolher
                 elif current_stage in ["aguardando_escolha_horario", "aguardando_email"]:
                     state["next_action"] = "confirm"  # Lead precisa confirmar horário/email
                 elif current_stage == "agendamento_confirmado":
@@ -808,8 +810,8 @@ REGRAS CRÍTICAS:
 
             state["messages"] = messages
             state["lead"] = lead
-            state["current_stage"] = "aguardando_escolha_horario"
-            state["next_action"] = "confirm"
+            state["current_stage"] = "horarios_oferecidos"  # Novo stage intermediário
+            state["next_action"] = "end"  # Terminar e esperar resposta do lead
             state["available_slots"] = available_slots  # Guardar slots para confirmação
 
             logger.info(f"Oferecendo horários de agendamento para {lead.nome}")
@@ -1078,9 +1080,10 @@ Confirme o agendamento de forma CURTA (máximo 3-4 linhas)."""
 
             system_prompt = """Você é Smith, da AutomateX.
 
-O lead não escolheu um horário claro. Peça para ele escolher um dos horários listados anteriormente de forma DIRETA (máximo 2 linhas).
+O lead respondeu mas não escolheu um horário específico dos que foram oferecidos.
 
-Exemplo: "Qual desses horários funciona melhor pra você? E qual seu email para eu enviar o convite?"
+PEÇA NOVAMENTE de forma CLARA e DIRETA (máximo 2 linhas):
+"Qual desses horários funciona melhor pra você? Só me dizer o dia e horário (ex: quinta 16h)"
 """
 
             system_msg = SystemMessage(content=system_prompt)
@@ -1088,8 +1091,10 @@ Exemplo: "Qual desses horários funciona melhor pra você? E qual seu email para
 
             messages.append(response)
             state["messages"] = messages
-            state["next_action"] = "confirm"
+            state["current_stage"] = "horarios_oferecidos"  # Manter no mesmo stage
+            state["next_action"] = "end"  # Sair do loop, esperar nova resposta
 
+            logger.info("⚠️ Pedindo clarificação de horário ao lead")
             return state
 
         except Exception as e:

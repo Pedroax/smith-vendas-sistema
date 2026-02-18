@@ -213,7 +213,7 @@ async def process_buffered_message(phone: str, combined_message: str, push_name:
         }
 
         if lead.qualification_data:
-            update_data["qualification_data"] = lead.qualification_data.model_dump()
+            update_data["qualificacao_detalhes"] = lead.qualification_data.model_dump()
 
         if lead.roi_analysis:
             roi_dict = lead.roi_analysis.model_dump()

@@ -197,7 +197,8 @@ async def update_lead(lead_id: str, lead_data: LeadUpdate):
 
         # Converter Pydantic models para dict se necessário
         if "qualification_data" in update_data and update_data["qualification_data"]:
-            update_data["qualification_data"] = update_data["qualification_data"].model_dump()
+            update_data["qualificacao_detalhes"] = update_data["qualification_data"].model_dump()
+            del update_data["qualification_data"]  # Remove a chave antiga
 
         if "roi_analysis" in update_data and update_data["roi_analysis"]:
             roi_dict = update_data["roi_analysis"].model_dump()

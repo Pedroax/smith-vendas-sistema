@@ -18,11 +18,13 @@ class ExtractedData(BaseModel):
     nome: Optional[str] = Field(None, description="Nome completo do lead (não apelido). Ex: 'Pedro Silva', 'João'")
     email: Optional[str] = Field(None, description="Email do lead")
     empresa: Optional[str] = Field(None, description="Nome da empresa")
+    cargo: Optional[str] = Field(None, description="Cargo do lead na empresa. Ex: 'CEO', 'Diretor Comercial', 'Gerente de Vendas'")
     setor: Optional[str] = Field(None, description="Setor/nicho do negócio (e-commerce, SaaS, educação, etc)")
 
     # QUALIFICAÇÃO DIRETA (coletar DEPOIS do contato)
     faturamento_anual: Optional[float] = Field(None, description="Faturamento anual da empresa em R$. Ex: '2M' = 2000000, '700k' = 700000")
     is_decision_maker: Optional[bool] = Field(None, description="Se é tomador de decisão de compras/tecnologia")
+    maior_desafio: Optional[str] = Field(None, description="Principal desafio/dor do lead. Ex: 'perda de leads', 'atendimento desorganizado', 'processos manuais'")
     urgency: Optional[str] = Field(None, description="Urgência para implementar: 'imediato', '1-3_meses', '3-6_meses', 'sem_urgencia'")
 
     # ESCOLHA DO LEAD (após qualificado)

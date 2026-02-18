@@ -12,6 +12,7 @@ from app.config import settings
 from app.models.lead import Lead, LeadStatus, LeadTemperature, QualificationData
 from app.services import roi_generator, whatsapp_service, lead_qualifier
 from app.services.google_calendar_service import google_calendar_service
+from app.services.data_extractor import DataExtractor
 from loguru import logger
 
 
@@ -317,6 +318,7 @@ class SmithAgent:
             max_retries=2,  # Limitar retries para evitar loop infinito em erro 429
             request_timeout=30  # Timeout de 30s por request
         )
+        self.data_extractor = DataExtractor()
 
     # ----------------
     # NODES
@@ -580,8 +582,51 @@ Seja CONSULTIVO, não mecânico. Cada pergunta deve ter contexto e demonstrar va
             lead.status = LeadStatus.QUALIFICANDO
             lead.temperatura = LeadTemperature.QUENTE
 
+            # ✅ EXTRAIR DADOS DA CONVERSA (CRÍTICO!)
+            logger.info(f"🔍 Extraindo dados de qualificação de {lead.nome}...")
+            extracted_qual_data = self.data_extractor.extract_qualification_data(lead)
+
+            if extracted_qual_data:
+                # Atualizar campos de qualificação
+                if not lead.qualification_data:
+                    lead.qualification_data = QualificationData()
+
+                # Atualizar apenas campos que foram extraídos (não sobrescrever com None)
+                if extracted_qual_data.faturamento_anual is not None:
+                    lead.qualification_data.faturamento_anual = extracted_qual_data.faturamento_anual
+                if extracted_qual_data.is_decision_maker is not None:
+                    lead.qualification_data.is_decision_maker = extracted_qual_data.is_decision_maker
+                if extracted_qual_data.urgency is not None:
+                    lead.qualification_data.urgency = extracted_qual_data.urgency
+                if extracted_qual_data.funcionarios_atendimento is not None:
+                    lead.qualification_data.funcionarios_atendimento = extracted_qual_data.funcionarios_atendimento
+                if extracted_qual_data.atendimentos_por_dia is not None:
+                    lead.qualification_data.atendimentos_por_dia = extracted_qual_data.atendimentos_por_dia
+                if extracted_qual_data.tempo_por_atendimento is not None:
+                    lead.qualification_data.tempo_por_atendimento = extracted_qual_data.tempo_por_atendimento
+                if extracted_qual_data.ticket_medio is not None:
+                    lead.qualification_data.ticket_medio = extracted_qual_data.ticket_medio
+
+                # Atualizar campos diretos do lead
+                if extracted_qual_data.nome and not lead.nome:
+                    lead.nome = extracted_qual_data.nome
+                if extracted_qual_data.email and not lead.email:
+                    lead.email = extracted_qual_data.email
+                if extracted_qual_data.empresa and not lead.empresa:
+                    lead.empresa = extracted_qual_data.empresa
+                if extracted_qual_data.cargo:
+                    lead.qualification_data.cargo = extracted_qual_data.cargo
+                if extracted_qual_data.setor and not lead.setor:
+                    lead.setor = extracted_qual_data.setor
+                if extracted_qual_data.maior_desafio:
+                    lead.qualification_data.maior_desafio = extracted_qual_data.maior_desafio
+
+                logger.success(f"✅ Dados extraídos e atualizados para {lead.nome}")
+            else:
+                logger.warning(f"⚠️ Nenhum dado novo extraído para {lead.nome}")
+
             # CRITICAL: Se lead totalmente qualificado, partir PRO AGENDAMENTO
-            if proximo_passo == "partir_agendamento":
+            if proximo_passo == "oferecer_agendamento":
                 # Lead qualificado → ir direto pro agendamento
                 next_action = "schedule"  # FIX: usar "schedule" não "schedule_meeting" (routing_map)
             else:

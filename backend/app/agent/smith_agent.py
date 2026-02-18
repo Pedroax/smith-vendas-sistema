@@ -419,23 +419,31 @@ class SmithAgent:
                 lead.qualification_data.urgency
             )
 
-            # CONDIÇÃO 2: IA ofereceu agendamento E lead aceitou
-            lead_aceitou_oferta = ia_ofereceu_agendamento and aceitou_agendar
+            # CONDIÇÃO PARA IR PRO AGENDAMENTO:
+            # SOMENTE se TODAS as perguntas foram respondidas E lead tem urgência E aceitou
+            todas_perguntas_respondidas = (
+                lead.empresa and
+                lead.qualification_data and
+                lead.qualification_data.funcionarios_atendimento and
+                lead.qualification_data.faturamento_anual and
+                lead.qualification_data.is_decision_maker is not None and
+                lead.qualification_data.maior_desafio and lead.qualification_data.maior_desafio.strip() != "" and
+                lead.qualification_data.urgency and lead.qualification_data.urgency.strip() != ""
+            )
 
-            # IR DIRETO PRO SCHEDULE se:
-            # - Lead tem urgência E aceitou, OU
-            # - IA ofereceu agendamento E lead aceitou
-            if (tem_urgencia and aceitou_agendar) or lead_aceitou_oferta:
-                logger.info(f"🎯 Lead {lead.nome} ACEITOU AGENDAR - indo direto para schedule")
+            # IR DIRETO PRO SCHEDULE SOMENTE se:
+            # - Todas perguntas respondidas E
+            # - Lead tem urgência E lead aceitou agendar
+            if todas_perguntas_respondidas and tem_urgencia and aceitou_agendar and ia_ofereceu_agendamento:
+                logger.info(f"🎯 Lead {lead.nome} TOTALMENTE QUALIFICADO e ACEITOU AGENDAR - indo para schedule")
+                logger.info(f"   - Todas perguntas: {todas_perguntas_respondidas}")
                 logger.info(f"   - Tem urgência: {tem_urgencia}")
                 logger.info(f"   - IA ofereceu: {ia_ofereceu_agendamento}")
                 logger.info(f"   - Lead aceitou: {aceitou_agendar}")
-                logger.info(f"   - Última mensagem: {last_messages[0] if last_messages else 'N/A'}")
 
                 state["next_action"] = "schedule"
                 state["lead"] = lead
                 state["current_stage"] = "agendamento_marcado"
-                # NÃO adicionar mensagem - deixar o schedule_meeting fazer isso
                 return state
 
             # System prompt
@@ -484,82 +492,71 @@ PERGUNTE DE FORMA LEVE:
 TOM: Direto mas justificado (mostra PORQUÊ importa)"""
 
             elif not lead.qualification_data or lead.qualification_data.is_decision_maker is None:
-                proximo_passo = "decisor_e_dor"
+                proximo_passo = "decisor"
                 contexto_estrategico = f"""SITUAÇÃO ATUAL: Porte mapeado.
 
-PRÓXIMO PASSO CRÍTICO: Identificar decisor E explorar a dor (JUNTAR PERGUNTAS).
+PRÓXIMO PASSO: Identificar decisor.
 
-PERGUNTE DE FORMA DIRETA:
-"{lead.nome}, você é quem decide sobre implementação de tecnologia aí? E qual o principal problema que tá te impedindo de crescer mais rápido agora?"
+PERGUNTE APENAS ISSO (UMA PERGUNTA):
+"{lead.nome}, você é o responsável por decisões de tecnologia na AX Code?"
 
-TOM: Direto, consultivo, focado em DOR
-IMPORTANTE: Esta é a pergunta mais importante! A dor vai definir todo o pitch."""
+REGRAS ABSOLUTAS:
+- Faça APENAS esta pergunta
+- NÃO ofereça agendamento ainda
+- NÃO mencione "próxima conversa" ou "call"
+- Seja direto, 1 linha só"""
 
             elif not lead.qualification_data or not lead.qualification_data.maior_desafio or lead.qualification_data.maior_desafio.strip() == "":
                 proximo_passo = "dor_principal"
                 contexto_estrategico = f"""SITUAÇÃO ATUAL: Decisor identificado.
 
-PRÓXIMO PASSO CRÍTICO: Mapear DOR e criar urgência.
+PRÓXIMO PASSO CRÍTICO: Mapear DOR.
 
-SE DECISOR = SIM:
-"Perfeito, {lead.nome}! Qual o principal problema que tá atrapalhando vocês agora? Perda de leads? Atendimento bagunçado? Time sobrecarregado?"
+PERGUNTE APENAS SOBRE A DOR (UMA PERGUNTA):
+"Qual o principal problema que tá impedindo vocês de crescer mais rápido? Perda de leads? Atendimento desorganizado? Processos manuais?"
 
-SE DECISOR = NÃO:
-"Entendi. E qual o principal gargalo que você vê hoje? Perda de leads? Processos manuais?"
-
-APÓS CAPTURAR A DOR, ADICIONE GATILHO EMOCIONAL + CASO ESPECÍFICO:
-
-Exemplos baseados na dor:
-- **Atendimento bagunçado/perda de leads**: "Cara, isso dói né? Trabalhar tanto pra captar e perder no atendimento... Tive um cliente com time de 18 pessoas que tava no mesmo barco. Em 30 dias cortou 60% das perdas."
-
-- **Baixa conversão**: "Entendo, {lead.nome}. Um dos nossos clientes aumentou 37% de conversão só organizando o follow-up com IA. Imagina quanto isso representaria pra vocês?"
-
-- **Processos manuais**: "Time perdendo tempo com operacional é dinheiro jogado fora. Dunkin' eliminou 85% das tarefas manuais e aumentou 45% as vendas."
-
-TOM: Empático, urgente, específico"""
+REGRAS ABSOLUTAS:
+- Faça APENAS esta pergunta sobre dor
+- NÃO ofereça agendamento ainda
+- NÃO mencione "call", "reunião", "conversa"
+- Máximo 2 linhas
+- Foco: descobrir a DOR"""
 
             elif not lead.qualification_data or not lead.qualification_data.urgency or lead.qualification_data.urgency.strip() == "":
-                proximo_passo = "urgencia_e_agendamento"
-                contexto_estrategico = f"""SITUAÇÃO ATUAL: Dor mapeada, lead engajado.
+                proximo_passo = "urgencia"
+                contexto_estrategico = f"""SITUAÇÃO ATUAL: Dor mapeada.
 
-PRÓXIMO PASSO: Entender urgência e JÁ OFERECER AGENDAMENTO.
+PRÓXIMO PASSO: Mapear urgência.
 
-PERGUNTE DE FORMA DIRETA:
+PERGUNTE APENAS SOBRE URGÊNCIA (UMA PERGUNTA):
 "Isso é urgente pra vocês ou dá pra deixar pros próximos meses?"
 
-SE RESPONDER "URGENTE" / "RÁPIDO" / "AGORA":
--> SUA RESPOSTA DEVE SER EXATAMENTE ASSIM:
-"Perfeito, {lead.nome}! Com essa urgência, vamos agilizar. Que tal agendarmos uma conversa de 30min para eu te mostrar como podemos resolver isso rapidamente? Posso te passar alguns horários disponíveis?"
-
-IMPORTANTE: Sua resposta DEVE SEMPRE TERMINAR COM UMA PERGUNTA CLARA SOBRE AGENDAMENTO.
-NÃO responda apenas "vamos trabalhar juntos" ou "podemos priorizar" - isso NÃO é oferecer agendamento!
-
-SE RESPONDER "PRÓXIMOS MESES" / "SEM PRESSA":
--> Qualifique normalmente mas com menos prioridade"""
+REGRAS ABSOLUTAS:
+- Faça APENAS esta pergunta
+- NÃO ofereça agendamento ainda
+- NÃO mencione "call", "reunião", "conversa"
+- Máximo 1 linha
+- Aguarde resposta antes de prosseguir"""
 
             else:
-                # LEAD TOTALMENTE QUALIFICADO - PARTIR PRO AGENDAMENTO!
-                proximo_passo = "partir_agendamento"
+                # LEAD TOTALMENTE QUALIFICADO - OFERECER AGENDAMENTO!
+                proximo_passo = "oferecer_agendamento"
 
-                # Sinalizar que deve ir direto para schedule_meeting
-                logger.info(f"Lead {lead.nome} totalmente qualificado - indo para agendamento")
+                logger.info(f"Lead {lead.nome} totalmente qualificado - oferecendo agendamento")
 
                 contexto_estrategico = f"""LEAD TOTALMENTE QUALIFICADO!
 
-AÇÃO IMEDIATA: Confirmar interesse em agendamento e partir para mostrar horários.
+PRÓXIMO PASSO: OFERECER agendamento (PERGUNTAR, não afirmar).
 
-RESPOSTA DIRETA (escolha baseado na urgência):
+RESPOSTA EXATA:
+"Perfeito, {lead.nome}! Com essa urgência, que tal agendarmos uma conversa de 30min para eu te mostrar como podemos resolver isso rapidamente?"
 
-SE URGENTE:
-"Perfeito, {lead.nome}! Pelo que você me contou, identifiquei que podemos resolver esse problema de atendimento rapidamente. Vou buscar os horários disponíveis para uma reunião de 30min com nosso especialista..."
-
-SE MÉDIO PRAZO:
-"Ótimo, {lead.nome}! Vamos agendar uma conversa de 30min para te mostrar exatamente como resolver isso. Deixa eu consultar a agenda..."
-
-IMPORTANTE:
-- Seja DIRETO e ASSERTIVO
-- Afirme que vai buscar os horários (não pergunte se quer agendar)
-- Próxima mensagem vai mostrar os horários reais"""
+REGRAS ABSOLUTAS:
+- PERGUNTE se quer agendar (não afirme que vai agendar)
+- Termine com ponto de interrogação
+- Máximo 2 linhas
+- Aguarde resposta "sim" do lead
+- NÃO mostre horários ainda (só após lead aceitar)"""
 
             # Adicionar contexto do lead
             context_msg = SystemMessage(content=f"""DADOS JÁ CAPTURADOS:

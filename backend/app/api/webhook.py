@@ -133,6 +133,8 @@ Pra começar, qual seu nome?"""
         # Atualizar lead no banco
         update_data = {
             "nome": lead.nome,  # Atualizar nome se mudou
+            "empresa": lead.empresa,
+            "email": lead.email,
             "ultima_mensagem_ia": response_text,
             "status": lead.status.value if hasattr(lead.status, 'value') else lead.status,
             "temperatura": lead.temperatura.value if hasattr(lead.temperatura, 'value') else lead.temperatura,

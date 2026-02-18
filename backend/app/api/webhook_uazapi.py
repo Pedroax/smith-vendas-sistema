@@ -207,6 +207,8 @@ async def process_buffered_message(phone: str, combined_message: str, push_name:
         # Atualizar lead no banco
         update_data = {
             "nome": lead.nome,
+            "empresa": lead.empresa,
+            "email": lead.email,
             "status": lead.status.value if hasattr(lead.status, 'value') else lead.status,
             "temperatura": lead.temperatura.value if hasattr(lead.temperatura, 'value') else lead.temperatura,
             "lead_score": lead.lead_score

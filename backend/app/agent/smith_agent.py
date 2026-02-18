@@ -313,7 +313,9 @@ class SmithAgent:
         self.llm = ChatOpenAI(
             model=settings.openai_model,
             temperature=settings.openai_temperature,
-            api_key=settings.openai_api_key
+            api_key=settings.openai_api_key,
+            max_retries=2,  # Limitar retries para evitar loop infinito em erro 429
+            request_timeout=30  # Timeout de 30s por request
         )
 
     # ----------------

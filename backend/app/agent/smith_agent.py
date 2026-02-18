@@ -616,8 +616,8 @@ Seja CONSULTIVO, não mecânico. Cada pergunta deve ter contexto e demonstrar va
                     lead.empresa = extracted_qual_data.empresa
                 if extracted_qual_data.cargo:
                     lead.qualification_data.cargo = extracted_qual_data.cargo
-                if extracted_qual_data.setor and not lead.setor:
-                    lead.setor = extracted_qual_data.setor
+                if extracted_qual_data.setor:
+                    lead.qualification_data.setor = extracted_qual_data.setor
                 if extracted_qual_data.maior_desafio:
                     lead.qualification_data.maior_desafio = extracted_qual_data.maior_desafio
 

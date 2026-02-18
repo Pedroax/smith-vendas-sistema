@@ -842,9 +842,13 @@ REGRAS CRÍTICAS:
 
             logger.info(f"📝 Processando escolha do lead: {last_message}")
 
-            # DETECTAR SE LEAD ESCOLHEU UM HORÁRIO
-            # Palavras-chave que indicam escolha de horário
-            escolha_keywords = ["pode", "vamos", "aceito", "quero", "sim", "ok", "beleza", "perfeito", "confirmo"]
+            # DETECTAR SE É APENAS ACEITAÇÃO (sem horário específico)
+            # Se lead disse apenas "sim", "ok", "pode", etc SEM mencionar dia/hora
+            # Isso significa que é a PRIMEIRA aceitação, não a escolha de horário
+            # Nesse caso, devemos ir para schedule_meeting para MOSTRAR os horários
+
+            aceita_keywords = ["sim", "ok", "pode", "vamos", "aceito", "quero", "beleza", "perfeito"]
+            apenas_aceitacao = any(kw in last_message for kw in aceita_keywords) and len(last_message.split()) <= 3
 
             # Detectar dias da semana
             dias_map = {
@@ -868,6 +872,13 @@ REGRAS CRÍTICAS:
                 if dia in last_message:
                     dia_escolhido = weekday
                     break
+
+            # SE É APENAS "SIM" SEM HORÁRIO → ir para schedule_meeting mostrar horários
+            if apenas_aceitacao and not hora_match and dia_escolhido is None:
+                logger.info("🔄 Lead aceitou agendar mas não escolheu horário - redirecionando para schedule_meeting")
+                state["next_action"] = "schedule"
+                state["current_stage"] = "qualificado"
+                return state
 
             # Tentar encontrar o slot correspondente
             from datetime import datetime, timedelta

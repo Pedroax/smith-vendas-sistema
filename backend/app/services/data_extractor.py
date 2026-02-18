@@ -48,7 +48,7 @@ class DataExtractor:
             api_key=settings.openai_api_key
         )
 
-    def extract_qualification_data(self, lead: Lead) -> Optional[QualificationData]:
+    def extract_qualification_data(self, lead: Lead) -> Optional[ExtractedData]:
         """
         Extrai dados de qualificação do histórico de conversa
 
@@ -56,7 +56,7 @@ class DataExtractor:
             lead: Lead com histórico de mensagens
 
         Returns:
-            QualificationData ou None se não conseguir extrair
+            ExtractedData ou None se não conseguir extrair
         """
         if not lead.conversation_history or len(lead.conversation_history) < 2:
             logger.debug(f"Histórico muito curto para {lead.nome}, pulando extração")
@@ -159,50 +159,24 @@ Retorne APENAS os dados que foram EXPLICITAMENTE mencionados. Se não foi mencio
             logger.info(f"   Nome extraído: {extracted.nome}")
             logger.info(f"   Email extraído: {extracted.email}")
             logger.info(f"   Empresa extraída: {extracted.empresa}")
+            logger.info(f"   Cargo extraído: {extracted.cargo}")
             logger.info(f"   Setor extraído: {extracted.setor}")
-
-            # Converter para QualificationData
-            qual_data = QualificationData(
-                # Qualificação direta
-                faturamento_anual=extracted.faturamento_anual,
-                is_decision_maker=extracted.is_decision_maker,
-                urgency=extracted.urgency,
-                setor=extracted.setor,
-                # Escolha
-                wants_roi=extracted.wants_roi,
-                wants_meeting=extracted.wants_meeting,
-                # Dados operacionais para ROI
-                atendimentos_por_dia=extracted.atendimentos_por_dia,
-                tempo_por_atendimento=extracted.tempo_por_atendimento,
-                funcionarios_atendimento=extracted.funcionarios_atendimento,
-                ticket_medio=extracted.ticket_medio
-            )
-
-            # Atualizar nome, empresa, email e setor no lead se extraiu
-            if extracted.nome and (not lead.nome or lead.nome.lower() in ['lead landing', 'lead', 'landing']):
-                lead.nome = extracted.nome
-                logger.info(f"📝 Nome do lead atualizado para: {extracted.nome}")
-
-            if extracted.empresa and not lead.empresa:
-                lead.empresa = extracted.empresa
-
-            if extracted.email and not lead.email:
-                lead.email = extracted.email
+            logger.info(f"   Maior desafio extraído: {extracted.maior_desafio}")
 
             # Log dos dados extraídos
             dados_qualificacao = sum([
-                1 for field in ['faturamento_anual', 'is_decision_maker', 'urgency']
-                if getattr(qual_data, field) is not None
+                1 for field in ['faturamento_anual', 'is_decision_maker', 'urgency', 'maior_desafio']
+                if getattr(extracted, field) is not None
             ])
 
             dados_roi = sum([
                 1 for field in ['atendimentos_por_dia', 'tempo_por_atendimento', 'funcionarios_atendimento', 'ticket_medio']
-                if getattr(qual_data, field) is not None
+                if getattr(extracted, field) is not None
             ])
 
-            logger.info(f"📊 Extraídos de {lead.nome}: {dados_qualificacao}/3 qualif, {dados_roi}/4 ROI")
+            logger.info(f"📊 Extraídos de {lead.nome}: {dados_qualificacao}/4 qualif, {dados_roi}/4 ROI")
 
-            return qual_data
+            return extracted
 
         except Exception as e:
             logger.error(f"Erro ao extrair dados de {lead.nome}: {e}")

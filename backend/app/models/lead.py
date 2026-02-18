@@ -40,6 +40,7 @@ class LeadTemperature(str, Enum):
 class QualificationData(BaseModel):
     """Dados de qualificação coletados pela IA"""
     # Qualificação direta (BANT simplificado)
+    cargo: Optional[str] = None  # Cargo do lead na empresa
     faturamento_anual: Optional[float] = None  # Faturamento anual da empresa em R$
     is_decision_maker: Optional[bool] = None  # É tomador de decisão?
     urgency: Optional[str] = None  # Urgência/timing: "imediato", "1-3_meses", "3-6_meses", "sem_urgencia"

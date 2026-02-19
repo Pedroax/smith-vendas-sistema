@@ -465,9 +465,8 @@ class SmithAgent:
             )
 
             # CONDIÇÃO PARA IR PRO AGENDAMENTO:
-            # SOMENTE se TODAS as perguntas foram respondidas E lead tem urgência E aceitou
+            # Dados CRÍTICOS para agendar (empresa NÃO é obrigatório!)
             todas_perguntas_respondidas = (
-                lead.empresa and
                 lead.qualification_data and
                 lead.qualification_data.funcionarios_atendimento and
                 lead.qualification_data.faturamento_anual and
@@ -507,11 +506,8 @@ class SmithAgent:
             proximo_passo = None
             resposta_predefinida = None  # Nova: resposta exata pré-definida
 
-            if not lead.empresa:
-                proximo_passo = "empresa_e_cargo"
-                contexto_estrategico = f"""Faça esta pergunta: "{lead.nome}, qual é sua empresa e qual seu cargo lá?\""""
-
-            elif not lead.qualification_data or not lead.qualification_data.funcionarios_atendimento:
+            # EMPRESA NÃO É CRÍTICO - pode coletar depois do agendamento
+            if not lead.qualification_data or not lead.qualification_data.funcionarios_atendimento:
                 proximo_passo = "contexto_operacional"
 
                 # Verificar se já tem faturamento para não perguntar de novo

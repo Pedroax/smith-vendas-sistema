@@ -340,10 +340,8 @@ class SmithAgent:
                     state["next_action"] = "qualify"
                 elif current_stage == "qualificado":
                     state["next_action"] = "qualify"  # Lead qualificado mas ainda em conversa
-                elif current_stage == "horarios_oferecidos":
+                elif current_stage in ["aguardando_escolha_horario", "aguardando_email", "horarios_oferecidos"]:
                     state["next_action"] = "confirm"  # Lead viu horários, vai escolher
-                elif current_stage in ["aguardando_escolha_horario", "aguardando_email"]:
-                    state["next_action"] = "confirm"  # Lead precisa confirmar horário/email
                 elif current_stage == "agendamento_confirmado":
                     state["next_action"] = "end"  # Reunião confirmada e criada
                 elif current_stage == "agendamento_marcado":
@@ -770,12 +768,13 @@ Qual funciona melhor pra você? E qual seu email para eu enviar o convite do Goo
 
             # Atualizar estado
             messages.append(response)
-            lead.status = LeadStatus.AGENDAMENTO_MARCADO
+            # Status: aguardando lead escolher horário (não agendou ainda!)
+            lead.status = LeadStatus.AGUARDANDO_ESCOLHA_HORARIO
             lead.lead_score = 90
 
             state["messages"] = messages
             state["lead"] = lead
-            state["current_stage"] = "horarios_oferecidos"  # Novo stage intermediário
+            state["current_stage"] = "aguardando_escolha_horario"  # Mesmo valor que lead.status
             state["next_action"] = "end"  # Terminar e esperar resposta do lead
             state["available_slots"] = available_slots  # Guardar slots para confirmação
 

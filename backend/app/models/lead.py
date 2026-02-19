@@ -14,6 +14,7 @@ class LeadStatus(str, Enum):
     CONTATO_INICIAL = "contato_inicial"
     QUALIFICANDO = "qualificando"
     QUALIFICADO = "qualificado"
+    AGUARDANDO_ESCOLHA_HORARIO = "aguardando_escolha_horario"  # Viu horários, aguardando escolha
     AGENDAMENTO_MARCADO = "agendamento_marcado"
     GANHO = "ganho"
     PERDIDO = "perdido"

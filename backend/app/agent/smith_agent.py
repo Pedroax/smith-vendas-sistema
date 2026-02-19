@@ -814,28 +814,50 @@ Qual funciona melhor pra você? E qual seu email para eu enviar o convite do Goo
             aceita_keywords = ["sim", "ok", "pode", "vamos", "aceito", "quero", "beleza", "perfeito"]
             apenas_aceitacao = any(kw in last_message for kw in aceita_keywords) and len(last_message.split()) <= 3
 
-            # Detectar dias da semana
-            dias_map = {
-                "segunda": 0, "seg": 0,
-                "terça": 1, "terca": 1, "ter": 1,
-                "quarta": 2, "qua": 2,
-                "quinta": 3, "qui": 3,
-                "sexta": 4, "sex": 4,
-                "sábado": 5, "sabado": 5, "sab": 5,
-                "domingo": 6, "dom": 6
-            }
-
             # Detectar horários (formato: 10h, 14h30, 10:00, 14:30)
             import re
+            from datetime import datetime, timedelta
+            import pytz
+
             hora_pattern = r'(\d{1,2})(?:h|:)?(\d{2})?'
             hora_match = re.search(hora_pattern, last_message)
 
-            # Detectar dia da semana
+            # Detectar dia escolhido (weekday ou data relativa)
             dia_escolhido = None
-            for dia, weekday in dias_map.items():
-                if dia in last_message:
-                    dia_escolhido = weekday
-                    break
+            tz = pytz.timezone('America/Sao_Paulo')
+            now = datetime.now(tz)
+
+            # 1. Detectar "hoje", "amanhã", "depois de amanhã"
+            if "hoje" in last_message:
+                dia_escolhido = now.weekday()
+                days_ahead = 0
+            elif "amanhã" in last_message or "amanha" in last_message:
+                tomorrow = now + timedelta(days=1)
+                dia_escolhido = tomorrow.weekday()
+                days_ahead = 1
+            elif "depois" in last_message and ("amanhã" in last_message or "amanha" in last_message):
+                after_tomorrow = now + timedelta(days=2)
+                dia_escolhido = after_tomorrow.weekday()
+                days_ahead = 2
+            else:
+                # 2. Detectar dias da semana
+                dias_map = {
+                    "segunda": 0, "seg": 0,
+                    "terça": 1, "terca": 1, "ter": 1,
+                    "quarta": 2, "qua": 2,
+                    "quinta": 3, "qui": 3,
+                    "sexta": 4, "sex": 4,
+                    "sábado": 5, "sabado": 5, "sab": 5,
+                    "domingo": 6, "dom": 6
+                }
+
+                for dia, weekday in dias_map.items():
+                    if dia in last_message:
+                        dia_escolhido = weekday
+                        days_ahead = (dia_escolhido - now.weekday()) % 7
+                        if days_ahead == 0:
+                            days_ahead = 7  # Próxima semana se for hoje
+                        break
 
             # SE É APENAS "SIM" SEM HORÁRIO → ir para schedule_meeting mostrar horários
             if apenas_aceitacao and not hora_match and dia_escolhido is None:
@@ -845,16 +867,17 @@ Qual funciona melhor pra você? E qual seu email para eu enviar o convite do Goo
                 return state
 
             # Tentar encontrar o slot correspondente
-            from datetime import datetime, timedelta
-            import pytz
-
             chosen_slot = None
 
             if hora_match and dia_escolhido is not None:
                 hora = int(hora_match.group(1))
                 minuto = int(hora_match.group(2)) if hora_match.group(2) else 0
 
-                logger.info(f"🔍 Lead escolheu: {list(dias_map.keys())[list(dias_map.values()).index(dia_escolhido)]} {hora}:{minuto:02d}")
+                # Construir datetime alvo
+                target_datetime = now + timedelta(days=days_ahead if 'days_ahead' in locals() else 0)
+                target_datetime = target_datetime.replace(hour=hora, minute=minuto, second=0, microsecond=0)
+
+                logger.info(f"🔍 Lead escolheu: {target_datetime.strftime('%d/%m às %H:%M')}")
 
                 # Procurar slot correspondente nos slots disponíveis
                 for slot in available_slots:
@@ -867,25 +890,12 @@ Qual funciona melhor pra você? E qual seu email para eu enviar o convite do Goo
                         logger.success(f"✅ Slot encontrado: {slot['display']}")
                         break
 
-            # Se não encontrou slot exato, tentar criar um datetime baseado na escolha
-            if not chosen_slot and hora_match and dia_escolhido is not None:
-                hora = int(hora_match.group(1))
-                minuto = int(hora_match.group(2)) if hora_match.group(2) else 0
-
-                # Calcular próxima ocorrência do dia da semana
-                tz = pytz.timezone('America/Sao_Paulo')
-                now = datetime.now(tz)
-                days_ahead = (dia_escolhido - now.weekday()) % 7
-                if days_ahead == 0:
-                    days_ahead = 7  # Próxima semana se for hoje
-
-                target_date = now + timedelta(days=days_ahead)
-                meeting_datetime = target_date.replace(hour=hora, minute=minuto, second=0, microsecond=0)
-
+            # Se não encontrou slot exato, criar um novo baseado no target_datetime
+            if not chosen_slot and hora_match and dia_escolhido is not None and 'target_datetime' in locals():
                 chosen_slot = {
-                    'start': meeting_datetime,
-                    'end': meeting_datetime + timedelta(minutes=60),
-                    'display': meeting_datetime.strftime('%A, %d/%m às %H:%M')
+                    'start': target_datetime,
+                    'end': target_datetime + timedelta(minutes=60),
+                    'display': target_datetime.strftime('%A, %d/%m às %H:%M')
                 }
                 logger.info(f"📅 Criado slot customizado: {chosen_slot['display']}")
 

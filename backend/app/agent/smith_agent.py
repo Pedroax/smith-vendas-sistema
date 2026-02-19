@@ -465,9 +465,10 @@ class SmithAgent:
             )
 
             # CONDIÇÃO PARA IR PRO AGENDAMENTO:
-            # Dados CRÍTICOS para agendar (empresa NÃO é obrigatório!)
+            # Dados CRÍTICOS: cargo (CEO/Dono/Sócio é ICP), faturamento, decisor, urgência, desafio
             todas_perguntas_respondidas = (
                 lead.qualification_data and
+                lead.qualification_data.cargo and  # CRÍTICO - CEO/Dono/Sócio
                 lead.qualification_data.funcionarios_atendimento and
                 lead.qualification_data.faturamento_anual and
                 lead.qualification_data.is_decision_maker is not None and
@@ -478,6 +479,7 @@ class SmithAgent:
             # DEBUG: Mostrar valores da validação
             logger.info(f"🔍 VALIDAÇÃO AGENDAMENTO para {lead.nome}:")
             logger.info(f"   empresa: {lead.empresa}")
+            logger.info(f"   cargo: {lead.qualification_data.cargo if lead.qualification_data else None}")
             logger.info(f"   funcionarios_atendimento: {lead.qualification_data.funcionarios_atendimento if lead.qualification_data else None}")
             logger.info(f"   faturamento_anual: {lead.qualification_data.faturamento_anual if lead.qualification_data else None}")
             logger.info(f"   is_decision_maker: {lead.qualification_data.is_decision_maker if lead.qualification_data else None}")
@@ -506,8 +508,12 @@ class SmithAgent:
             proximo_passo = None
             resposta_predefinida = None  # Nova: resposta exata pré-definida
 
-            # EMPRESA NÃO É CRÍTICO - pode coletar depois do agendamento
-            if not lead.qualification_data or not lead.qualification_data.funcionarios_atendimento:
+            # CARGO É CRÍTICO (CEO/Dono/Sócio é ICP) - perguntar junto com empresa
+            if not lead.qualification_data or not lead.qualification_data.cargo:
+                proximo_passo = "empresa_e_cargo"
+                contexto_estrategico = f"""Faça esta pergunta: "{lead.nome}, qual é sua empresa e qual seu cargo lá?\""""
+
+            elif not lead.qualification_data or not lead.qualification_data.funcionarios_atendimento:
                 proximo_passo = "contexto_operacional"
 
                 # Verificar se já tem faturamento para não perguntar de novo

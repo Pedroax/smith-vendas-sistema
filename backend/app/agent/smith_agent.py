@@ -916,8 +916,9 @@ Sua resposta deve ser CURTA (máximo 2 linhas) e pedir o email para enviar o con
                     messages.append(response)
                     state["messages"] = messages
                     state["current_stage"] = "aguardando_email"
-                    state["next_action"] = "confirm"
+                    state["next_action"] = "end"  # ESPERAR email do lead (não voltar para confirm!)
                     state["chosen_slot"] = chosen_slot
+                    lead.status = LeadStatus.AGUARDANDO_ESCOLHA_HORARIO  # Manter mesmo status
 
                     logger.info("📧 Solicitando email do lead para criar reunião")
                     return state

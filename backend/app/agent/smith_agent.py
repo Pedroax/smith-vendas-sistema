@@ -508,10 +508,15 @@ class SmithAgent:
             proximo_passo = None
             resposta_predefinida = None  # Nova: resposta exata pré-definida
 
+            # ===== USAR TEMPLATES FIXOS (tipo N8N) - SEM LLM =====
+            # IA estava inventando respostas, agora usa TEXTO FIXO
+
+            fixed_response = None
+
             # CARGO É CRÍTICO (CEO/Dono/Sócio é ICP) - perguntar junto com empresa
             if not lead.qualification_data or not lead.qualification_data.cargo:
                 proximo_passo = "empresa_e_cargo"
-                contexto_estrategico = f"""Faça esta pergunta: "{lead.nome}, qual é sua empresa e qual seu cargo lá?\""""
+                fixed_response = f"{lead.nome}, qual é sua empresa e qual seu cargo lá?"
 
             elif not lead.qualification_data or not lead.qualification_data.funcionarios_atendimento:
                 proximo_passo = "contexto_operacional"
@@ -521,42 +526,35 @@ class SmithAgent:
 
                 if ja_tem_faturamento:
                     # Se JÁ tem faturamento, perguntar SÓ sobre funcionários
-                    contexto_estrategico = f"""Faça esta pergunta: "{lead.nome}, quantas pessoas você tem no time de vendas?\""""
+                    fixed_response = f"{lead.nome}, quantas pessoas você tem no time de vendas?"
                 else:
                     # Se NÃO tem faturamento, perguntar ambos
-                    contexto_estrategico = f"""Faça esta pergunta: "{lead.nome}, pra eu entender melhor: quantas pessoas você tem no time de vendas e qual o faturamento mensal da empresa?\""""
+                    fixed_response = f"{lead.nome}, pra eu entender melhor: quantas pessoas você tem no time de vendas e qual o faturamento mensal da empresa?"
 
             elif not lead.qualification_data or not lead.qualification_data.faturamento_anual:
                 proximo_passo = "faturamento"
-                contexto_estrategico = f"""Faça esta pergunta: "Legal, {lead.nome}! E vocês faturam quanto por mês? Isso me ajuda a calcular o impacto exato que conseguimos gerar pra vocês.\""""
+                fixed_response = f"Legal, {lead.nome}! E vocês faturam quanto por mês? Isso me ajuda a calcular o impacto exato que conseguimos gerar pra vocês."
 
             elif not lead.qualification_data or lead.qualification_data.is_decision_maker is None:
                 proximo_passo = "decisor"
-                contexto_estrategico = f"""Faça esta pergunta: "{lead.nome}, você é o responsável por decisões de tecnologia na {lead.empresa or 'empresa'}?\""""
+                fixed_response = f"{lead.nome}, você é o responsável por decisões de tecnologia na {lead.empresa or 'empresa'}?"
 
             elif not lead.qualification_data or not lead.qualification_data.maior_desafio or lead.qualification_data.maior_desafio.strip() == "":
                 proximo_passo = "dor_principal"
-                contexto_estrategico = f"""Faça esta pergunta: "Qual o principal problema que tá impedindo vocês de crescer mais rápido? Perda de leads? Atendimento desorganizado? Processos manuais?\""""
+                fixed_response = f"Qual o principal problema que tá impedindo vocês de crescer mais rápido? Perda de leads? Atendimento desorganizado? Processos manuais?"
 
             elif not lead.qualification_data or not lead.qualification_data.urgency or lead.qualification_data.urgency.strip() == "":
                 proximo_passo = "urgencia"
-                contexto_estrategico = f"""Faça esta pergunta: "Isso é urgente pra vocês ou dá pra deixar pros próximos meses?\""""
+                fixed_response = f"Isso é urgente pra vocês ou dá pra deixar pros próximos meses?"
 
             else:
                 # LEAD TOTALMENTE QUALIFICADO - OFERECER AGENDAMENTO!
                 proximo_passo = "oferecer_agendamento"
-
                 logger.info(f"Lead {lead.nome} totalmente qualificado - oferecendo agendamento")
+                fixed_response = f"Perfeito, {lead.nome}! Com essa urgência, que tal agendarmos uma conversa de 30min para eu te mostrar como podemos resolver isso rapidamente?"
 
-                contexto_estrategico = f"""Faça esta pergunta: "Perfeito, {lead.nome}! Com essa urgência, que tal agendarmos uma conversa de 30min para eu te mostrar como podemos resolver isso rapidamente?\""""
-
-            # Adicionar contexto do lead
-            context_msg = SystemMessage(content=f"""{contexto_estrategico}
-
-Não invente nada. Faça apenas a pergunta solicitada.""")
-
-            # Gerar resposta
-            response = self.llm.invoke([system_msg, context_msg] + list(messages))
+            # Usar resposta FIXA (sem passar por LLM)
+            response = AIMessage(content=fixed_response)
 
             # Atualizar estado
             messages.append(response)

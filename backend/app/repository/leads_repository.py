@@ -105,6 +105,7 @@ class LeadsRepository:
             valor_estimado=0.0,  # Campo não existe no banco
             meeting_scheduled_at=meeting_scheduled_at,
             meeting_google_event_id=db_lead.get("meeting_google_event_id"),
+            temp_meeting_slot=db_lead.get("temp_meeting_slot"),  # Slot temporário de agendamento
             followup_config=followup_config,
             conversation_history=conversation_history,
             ultima_interacao=ultima_interacao,
@@ -145,6 +146,7 @@ class LeadsRepository:
             "tags": lead.tags,
             "meeting_scheduled_at": lead.meeting_scheduled_at.isoformat() if lead.meeting_scheduled_at else None,
             "meeting_google_event_id": lead.meeting_google_event_id,
+            "temp_meeting_slot": lead.temp_meeting_slot,  # Slot temporário de agendamento (JSONB)
         }
 
         # Converter qualification_data para qualificacao_detalhes (JSONB)

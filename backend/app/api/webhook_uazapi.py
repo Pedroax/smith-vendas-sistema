@@ -211,7 +211,8 @@ async def process_buffered_message(phone: str, combined_message: str, push_name:
             "email": lead.email,
             "status": lead.status.value if hasattr(lead.status, 'value') else lead.status,
             "temperatura": lead.temperatura.value if hasattr(lead.temperatura, 'value') else lead.temperatura,
-            "lead_score": lead.lead_score
+            "lead_score": lead.lead_score,
+            "temp_meeting_slot": lead.temp_meeting_slot  # Persistir slot temporário de agendamento
         }
 
         if lead.qualification_data:
@@ -356,6 +357,7 @@ async def handle_delete_command(phone: str, push_name: str):
             # Limpar agendamento
             "meeting_scheduled_at": None,
             "meeting_google_event_id": None,
+            "temp_meeting_slot": None,  # Limpar slot temporário
 
             # Limpar notas e tags
             "observacoes": None,

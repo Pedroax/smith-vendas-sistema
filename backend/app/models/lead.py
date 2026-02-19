@@ -114,6 +114,7 @@ class Lead(BaseModel):
     # Agendamento
     meeting_scheduled_at: Optional[datetime] = None
     meeting_google_event_id: Optional[str] = None
+    temp_meeting_slot: Optional[Dict[str, Any]] = None  # Slot temporário durante processo de agendamento
 
     # Follow-up
     followup_config: FollowUpConfig = Field(default_factory=FollowUpConfig)

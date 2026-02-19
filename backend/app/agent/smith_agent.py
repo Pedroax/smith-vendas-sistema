@@ -917,10 +917,20 @@ Sua resposta deve ser CURTA (máximo 2 linhas) e pedir o email para enviar o con
                     state["messages"] = messages
                     state["current_stage"] = "aguardando_email"
                     state["next_action"] = "end"  # ESPERAR email do lead (não voltar para confirm!)
+
+                    # PERSISTIR SLOT NO BANCO DE DADOS para não perder entre webhooks
+                    # Serializar datetime para string ISO antes de salvar
+                    slot_to_save = chosen_slot.copy()
+                    if isinstance(slot_to_save['start'], datetime):
+                        slot_to_save['start'] = slot_to_save['start'].isoformat()
+                    if isinstance(slot_to_save['end'], datetime):
+                        slot_to_save['end'] = slot_to_save['end'].isoformat()
+
+                    lead.temp_meeting_slot = slot_to_save
                     state["chosen_slot"] = chosen_slot
                     lead.status = LeadStatus.AGUARDANDO_ESCOLHA_HORARIO  # Manter mesmo status
 
-                    logger.info("📧 Solicitando email do lead para criar reunião")
+                    logger.info(f"📧 Solicitando email do lead para criar reunião (slot salvo no DB)")
                     return state
 
                 # SE TEM EMAIL, CRIAR REUNIÃO
@@ -980,6 +990,7 @@ Confirme o agendamento de forma CURTA (máximo 3-4 linhas)."""
                     messages.append(response)
                     lead.status = LeadStatus.AGENDAMENTO_MARCADO
                     lead.lead_score = 95
+                    lead.temp_meeting_slot = None  # LIMPAR slot temporário após criação
 
                     state["messages"] = messages
                     state["lead"] = lead
@@ -995,8 +1006,17 @@ Confirme o agendamento de forma CURTA (máximo 3-4 linhas)."""
                 lead.email = last_message
                 logger.info(f"📧 Email capturado: {lead.email}")
 
-                # Recuperar slot escolhido anteriormente
-                chosen_slot = state.get("chosen_slot")
+                # Recuperar slot escolhido do BANCO DE DADOS (não do state que foi perdido)
+                chosen_slot = lead.temp_meeting_slot if lead.temp_meeting_slot else state.get("chosen_slot")
+
+                if chosen_slot:
+                    # Deserializar datetime se estiver como string
+                    if isinstance(chosen_slot.get('start'), str):
+                        chosen_slot['start'] = datetime.fromisoformat(chosen_slot['start'])
+                    if isinstance(chosen_slot.get('end'), str):
+                        chosen_slot['end'] = datetime.fromisoformat(chosen_slot['end'])
+
+                    logger.info(f"✅ Slot recuperado do banco: {chosen_slot.get('display', 'N/A')}")
 
                 if chosen_slot:
                     # Criar reunião
@@ -1052,6 +1072,7 @@ Confirme o agendamento de forma CURTA (máximo 3-4 linhas)."""
                     messages.append(response)
                     lead.status = LeadStatus.AGENDAMENTO_MARCADO
                     lead.lead_score = 95
+                    lead.temp_meeting_slot = None  # LIMPAR slot temporário após criação
 
                     state["messages"] = messages
                     state["lead"] = lead

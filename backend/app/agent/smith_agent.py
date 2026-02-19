@@ -516,7 +516,7 @@ class SmithAgent:
             # CARGO É CRÍTICO (CEO/Dono/Sócio é ICP) - perguntar junto com empresa
             if not lead.qualification_data or not lead.qualification_data.cargo:
                 proximo_passo = "empresa_e_cargo"
-                fixed_response = f"{lead.nome}, qual é sua empresa e qual seu cargo lá?"
+                fixed_response = f"Legal, {lead.nome}! Qual é sua empresa e qual seu cargo lá?"
 
             elif not lead.qualification_data or not lead.qualification_data.funcionarios_atendimento:
                 proximo_passo = "contexto_operacional"
@@ -526,32 +526,32 @@ class SmithAgent:
 
                 if ja_tem_faturamento:
                     # Se JÁ tem faturamento, perguntar SÓ sobre funcionários
-                    fixed_response = f"{lead.nome}, quantas pessoas você tem no time de vendas?"
+                    fixed_response = f"Entendi, {lead.nome}! E quantas pessoas você tem no time de vendas/atendimento?"
                 else:
                     # Se NÃO tem faturamento, perguntar ambos
-                    fixed_response = f"{lead.nome}, pra eu entender melhor: quantas pessoas você tem no time de vendas e qual o faturamento mensal da empresa?"
+                    fixed_response = f"Bacana, {lead.nome}! Pra eu calcular o impacto real: quantas pessoas você tem no time de vendas e qual o faturamento mensal aproximado da empresa?"
 
             elif not lead.qualification_data or not lead.qualification_data.faturamento_anual:
                 proximo_passo = "faturamento"
-                fixed_response = f"Legal, {lead.nome}! E vocês faturam quanto por mês? Isso me ajuda a calcular o impacto exato que conseguimos gerar pra vocês."
+                fixed_response = f"Ótimo, {lead.nome}! E qual o faturamento mensal aproximado? Isso me ajuda a calcular o ROI exato que conseguimos gerar pra vocês."
 
             elif not lead.qualification_data or lead.qualification_data.is_decision_maker is None:
                 proximo_passo = "decisor"
-                fixed_response = f"{lead.nome}, você é o responsável por decisões de tecnologia na {lead.empresa or 'empresa'}?"
+                fixed_response = f"Perfeito! {lead.nome}, você é o responsável por decisões de tecnologia/processos na {lead.empresa or 'empresa'}?"
 
             elif not lead.qualification_data or not lead.qualification_data.maior_desafio or lead.qualification_data.maior_desafio.strip() == "":
                 proximo_passo = "dor_principal"
-                fixed_response = f"Qual o principal problema que tá impedindo vocês de crescer mais rápido? Perda de leads? Atendimento desorganizado? Processos manuais?"
+                fixed_response = f"Show! Me conta: qual o principal problema que tá impedindo vocês de crescer mais rápido? Perda de leads? Atendimento desorganizado? Processos manuais?"
 
             elif not lead.qualification_data or not lead.qualification_data.urgency or lead.qualification_data.urgency.strip() == "":
                 proximo_passo = "urgencia"
-                fixed_response = f"Isso é urgente pra vocês ou dá pra deixar pros próximos meses?"
+                fixed_response = f"Entendi, {lead.nome}! E quanto ao timing: isso é urgente pra vocês ou dá pra deixar pros próximos meses?"
 
             else:
                 # LEAD TOTALMENTE QUALIFICADO - OFERECER AGENDAMENTO!
                 proximo_passo = "oferecer_agendamento"
                 logger.info(f"Lead {lead.nome} totalmente qualificado - oferecendo agendamento")
-                fixed_response = f"Perfeito, {lead.nome}! Com essa urgência, que tal agendarmos uma conversa de 30min para eu te mostrar como podemos resolver isso rapidamente?"
+                fixed_response = f"Perfeito, {lead.nome}! 🎯\n\nCom base no que você me contou (faturamento, urgência e desafio), consigo te mostrar exatamente como resolver isso.\n\nQue tal agendarmos 30min para eu te apresentar a solução completa?"
 
             # Usar resposta FIXA (sem passar por LLM)
             response = AIMessage(content=fixed_response)
@@ -561,13 +561,9 @@ class SmithAgent:
             lead.status = LeadStatus.QUALIFICANDO
             lead.temperatura = LeadTemperature.QUENTE
 
-            # CRITICAL: Se lead totalmente qualificado, partir PRO AGENDAMENTO
-            if proximo_passo == "oferecer_agendamento":
-                # Lead qualificado → ir direto pro agendamento
-                next_action = "schedule"  # FIX: usar "schedule" não "schedule_meeting" (routing_map)
-            else:
-                # Ainda coletando informações → terminar e esperar resposta
-                next_action = "end"
+            # SEMPRE terminar e esperar resposta do lead
+            # (Detecção de aceitação acontece na PRÓXIMA rodada, não agora!)
+            next_action = "end"
 
             state["messages"] = messages
             state["lead"] = lead
@@ -763,23 +759,14 @@ OFEREÇA AS 2 OPÇÕES DE FORMA CLARA E OBJETIVA.""")
             else:
                 logger.warning("⚠️ Google Calendar não disponível - usando mensagem padrão")
 
-            # System prompt COM horários reais
-            system_prompt = f"""{SYSTEM_PROMPTS["agendamento"]}
+            # TEMPLATE FIXO - mostrar horários e pedir email (SEM passar por LLM!)
+            fixed_response = f"""Aqui estão os horários disponíveis:
 
-HORÁRIOS DISPONÍVEIS (copie EXATAMENTE como estão abaixo):
 {slots_text}
+Qual funciona melhor pra você? E qual seu email para eu enviar o convite do Google Calendar?"""
 
-REGRAS CRÍTICAS:
-- Copie os horários EXATAMENTE como fornecidos acima (com dia da semana ou "Amanhã")
-- NÃO simplifique para apenas horas (ex: NÃO use "11:00", use "Amanhã às 11:00")
-- NÃO invente horários que não estão na lista
-- SEMPRE peça o email do lead junto com a escolha do horário
-- Formatação: bullets (•) um por linha"""
-
-            system_msg = SystemMessage(content=system_prompt)
-
-            # Gerar resposta
-            response = self.llm.invoke([system_msg] + list(messages))
+            # Usar resposta FIXA (sem passar por LLM)
+            response = AIMessage(content=fixed_response)
 
             # Atualizar estado
             messages.append(response)

@@ -313,7 +313,7 @@ class SmithAgent:
     def __init__(self):
         self.llm = ChatOpenAI(
             model=settings.openai_model,
-            temperature=settings.openai_temperature,
+            temperature=0,  # ZERO criatividade - seguir instruções EXATAMENTE
             api_key=settings.openai_api_key,
             max_retries=2,  # Limitar retries para evitar loop infinito em erro 429
             request_timeout=30  # Timeout de 30s por request
@@ -503,25 +503,13 @@ class SmithAgent:
             # System prompt
             system_msg = SystemMessage(content=SYSTEM_PROMPTS["qualificando"])
 
-            # Determinar próximo passo estratégico
+            # Determinar próximo passo estratégico E RESPOSTA PRÉ-DEFINIDA
             proximo_passo = None
-            contexto_estrategico = ""
+            resposta_predefinida = None  # Nova: resposta exata pré-definida
 
             if not lead.empresa:
                 proximo_passo = "empresa_e_cargo"
-                contexto_estrategico = f"""SITUAÇÃO ATUAL: Nome capturado ({lead.nome}).
-
-PRÓXIMO PASSO OBRIGATÓRIO: Capturar empresa e cargo.
-
-RESPONDA EXATAMENTE ISTO (NADA MAIS):
-"{lead.nome}, qual é sua empresa e qual seu cargo lá?"
-
-REGRAS ABSOLUTAS:
-- Faça APENAS esta pergunta
-- NÃO mencione agendamento, email, reunião ou call
-- NÃO invente perguntas extras
-- Máximo 1 linha
-- Aguarde resposta do lead"""
+                contexto_estrategico = f"""Faça esta pergunta: "{lead.nome}, qual é sua empresa e qual seu cargo lá?\""""
 
             elif not lead.qualification_data or not lead.qualification_data.funcionarios_atendimento:
                 proximo_passo = "contexto_operacional"
@@ -531,93 +519,26 @@ REGRAS ABSOLUTAS:
 
                 if ja_tem_faturamento:
                     # Se JÁ tem faturamento, perguntar SÓ sobre funcionários
-                    contexto_estrategico = f"""SITUAÇÃO ATUAL: Empresa, cargo e faturamento capturados.
-
-PRÓXIMO PASSO OBRIGATÓRIO: Perguntar quantos funcionários no time.
-
-RESPONDA EXATAMENTE ISTO (NADA MAIS):
-"{lead.nome}, quantas pessoas você tem no time de vendas?"
-
-REGRAS ABSOLUTAS:
-- Faça APENAS esta pergunta
-- NÃO mencione agendamento, email, reunião ou call
-- NÃO invente perguntas extras
-- Máximo 1 linha
-- Aguarde resposta do lead"""
+                    contexto_estrategico = f"""Faça esta pergunta: "{lead.nome}, quantas pessoas você tem no time de vendas?\""""
                 else:
                     # Se NÃO tem faturamento, perguntar ambos
-                    contexto_estrategico = f"""SITUAÇÃO ATUAL: Empresa e cargo capturados.
-
-PRÓXIMO PASSO OBRIGATÓRIO: Perguntar sobre equipe e faturamento.
-
-RESPONDA EXATAMENTE ISTO (NADA MAIS):
-"{lead.nome}, pra eu entender melhor: quantas pessoas você tem no time de vendas e qual o faturamento mensal da empresa?"
-
-REGRAS ABSOLUTAS:
-- Faça APENAS esta pergunta
-- NÃO mencione agendamento, email, reunião ou call
-- NÃO invente perguntas extras
-- Máximo 1 linha
-- Aguarde resposta do lead"""
+                    contexto_estrategico = f"""Faça esta pergunta: "{lead.nome}, pra eu entender melhor: quantas pessoas você tem no time de vendas e qual o faturamento mensal da empresa?\""""
 
             elif not lead.qualification_data or not lead.qualification_data.faturamento_anual:
                 proximo_passo = "faturamento"
-                contexto_estrategico = f"""SITUAÇÃO ATUAL: Tamanho de equipe capturado, faltando faturamento.
-
-PRÓXIMO PASSO: Completar qualificação de porte.
-
-PERGUNTE DE FORMA LEVE:
-"Legal, {lead.nome}! E vocês faturam quanto por mês? Isso me ajuda a calcular o impacto exato que conseguimos gerar pra vocês."
-
-TOM: Direto mas justificado (mostra PORQUÊ importa)"""
+                contexto_estrategico = f"""Faça esta pergunta: "Legal, {lead.nome}! E vocês faturam quanto por mês? Isso me ajuda a calcular o impacto exato que conseguimos gerar pra vocês.\""""
 
             elif not lead.qualification_data or lead.qualification_data.is_decision_maker is None:
                 proximo_passo = "decisor"
-                contexto_estrategico = f"""SITUAÇÃO ATUAL: Porte mapeado.
-
-PRÓXIMO PASSO OBRIGATÓRIO: Identificar decisor.
-
-RESPONDA EXATAMENTE ISTO (NADA MAIS):
-"{lead.nome}, você é o responsável por decisões de tecnologia na {lead.empresa or 'empresa'}?"
-
-REGRAS ABSOLUTAS:
-- Faça APENAS esta pergunta
-- NÃO ofereça agendamento, NÃO mencione email
-- NÃO mencione "call", "reunião", "conversa"
-- NÃO invente perguntas extras
-- Máximo 1 linha"""
+                contexto_estrategico = f"""Faça esta pergunta: "{lead.nome}, você é o responsável por decisões de tecnologia na {lead.empresa or 'empresa'}?\""""
 
             elif not lead.qualification_data or not lead.qualification_data.maior_desafio or lead.qualification_data.maior_desafio.strip() == "":
                 proximo_passo = "dor_principal"
-                contexto_estrategico = f"""SITUAÇÃO ATUAL: Decisor identificado.
-
-PRÓXIMO PASSO OBRIGATÓRIO: Mapear DOR.
-
-RESPONDA EXATAMENTE ISTO (NADA MAIS):
-"Qual o principal problema que tá impedindo vocês de crescer mais rápido? Perda de leads? Atendimento desorganizado? Processos manuais?"
-
-REGRAS ABSOLUTAS:
-- Faça APENAS esta pergunta sobre dor
-- NÃO ofereça agendamento, NÃO mencione email
-- NÃO mencione "call", "reunião", "conversa"
-- NÃO invente perguntas extras
-- Máximo 2 linhas"""
+                contexto_estrategico = f"""Faça esta pergunta: "Qual o principal problema que tá impedindo vocês de crescer mais rápido? Perda de leads? Atendimento desorganizado? Processos manuais?\""""
 
             elif not lead.qualification_data or not lead.qualification_data.urgency or lead.qualification_data.urgency.strip() == "":
                 proximo_passo = "urgencia"
-                contexto_estrategico = f"""SITUAÇÃO ATUAL: Dor mapeada.
-
-PRÓXIMO PASSO OBRIGATÓRIO: Mapear urgência.
-
-RESPONDA EXATAMENTE ISTO (NADA MAIS):
-"Isso é urgente pra vocês ou dá pra deixar pros próximos meses?"
-
-REGRAS ABSOLUTAS:
-- Faça APENAS esta pergunta
-- NÃO ofereça agendamento, NÃO mencione email
-- NÃO mencione "call", "reunião", "conversa"
-- NÃO invente perguntas extras
-- Máximo 1 linha"""
+                contexto_estrategico = f"""Faça esta pergunta: "Isso é urgente pra vocês ou dá pra deixar pros próximos meses?\""""
 
             else:
                 # LEAD TOTALMENTE QUALIFICADO - OFERECER AGENDAMENTO!
@@ -625,35 +546,12 @@ REGRAS ABSOLUTAS:
 
                 logger.info(f"Lead {lead.nome} totalmente qualificado - oferecendo agendamento")
 
-                contexto_estrategico = f"""LEAD TOTALMENTE QUALIFICADO!
-
-PRÓXIMO PASSO OBRIGATÓRIO: OFERECER agendamento.
-
-RESPONDA EXATAMENTE ISTO (NADA MAIS):
-"Perfeito, {lead.nome}! Com essa urgência, que tal agendarmos uma conversa de 30min para eu te mostrar como podemos resolver isso rapidamente?"
-
-REGRAS ABSOLUTAS:
-- PERGUNTE se quer agendar (não afirme que vai agendar)
-- Termine com ponto de interrogação
-- NÃO peça email ainda
-- Máximo 2 linhas
-- Aguarde resposta "sim" do lead
-- NÃO mostre horários ainda (só após lead aceitar)
-- NÃO invente perguntas extras"""
+                contexto_estrategico = f"""Faça esta pergunta: "Perfeito, {lead.nome}! Com essa urgência, que tal agendarmos uma conversa de 30min para eu te mostrar como podemos resolver isso rapidamente?\""""
 
             # Adicionar contexto do lead
-            context_msg = SystemMessage(content=f"""DADOS JÁ CAPTURADOS:
+            context_msg = SystemMessage(content=f"""{contexto_estrategico}
 
-Nome: {lead.nome}
-Email: {lead.email or 'Não capturado'}
-Empresa: {lead.empresa or 'Não capturado'}
-Faturamento: {lead.qualification_data.faturamento_anual if lead.qualification_data and lead.qualification_data.faturamento_anual else 'Não capturado'}
-Decisor: {'Sim' if lead.qualification_data and lead.qualification_data.is_decision_maker else 'Não' if lead.qualification_data and lead.qualification_data.is_decision_maker is False else 'Não capturado'}
-
-{contexto_estrategico}
-
-IMPORTANTE: NUNCA pergunte o nome novamente! Use "{lead.nome}" nas respostas.
-Seja CONSULTIVO, não mecânico. Cada pergunta deve ter contexto e demonstrar valor.""")
+Não invente nada. Faça apenas a pergunta solicitada.""")
 
             # Gerar resposta
             response = self.llm.invoke([system_msg, context_msg] + list(messages))

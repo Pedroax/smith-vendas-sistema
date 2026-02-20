@@ -406,11 +406,20 @@ class SmithAgent:
             # Verificar se IA OFERECEU agendamento recentemente (penúltima mensagem do assistant)
             ia_ofereceu_agendamento = False
             if messages:
+                # DEBUG: Mostrar últimas 3 mensagens do histórico
+                logger.info(f"🔍 DEBUG - Últimas 3 mensagens no histórico:")
+                for idx, msg in enumerate(list(reversed(messages))[:3]):
+                    msg_type = "AI" if isinstance(msg, AIMessage) else "USER"
+                    content_preview = msg.content[:60] if len(msg.content) > 60 else msg.content
+                    logger.info(f"   [{idx}] {msg_type}: {content_preview}")
+
                 for msg in reversed(messages):
                     if isinstance(msg, AIMessage):
                         msg_lower = msg.content.lower()
-                        ofereceu_keywords = ["agendar", "reunião", "conversa", "momento para discutir", "horário", "agenda"]
+                        ofereceu_keywords = ["agendar", "reunião", "conversa", "momento para discutir", "horário", "agenda", "marcar", "call", "bora marcar"]
                         ia_ofereceu_agendamento = any(kw in msg_lower for kw in ofereceu_keywords)
+                        logger.info(f"🔍 DEBUG - Verificando AIMessage: '{msg_lower[:80]}'")
+                        logger.info(f"🔍 DEBUG - Encontrou keyword? {ia_ofereceu_agendamento}")
                         break
 
             # ✅ EXTRAIR DADOS DA CONVERSA PRIMEIRO (ANTES DE DECIDIR PRÓXIMO PASSO!)

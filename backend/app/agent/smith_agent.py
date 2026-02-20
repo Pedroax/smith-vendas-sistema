@@ -514,7 +514,7 @@ class SmithAgent:
             # CARGO É CRÍTICO (CEO/Dono/Sócio é ICP) - perguntar junto com empresa
             if not lead.qualification_data or not lead.qualification_data.cargo:
                 proximo_passo = "empresa_e_cargo"
-                fixed_response = f"Legal, {lead.nome}! Qual é sua empresa e qual seu cargo lá?"
+                fixed_response = f"Opa, prazer {lead.nome}! 👋\n\nMe conta, qual é sua empresa e o que você faz lá?"
 
             elif not lead.qualification_data or not lead.qualification_data.funcionarios_atendimento:
                 proximo_passo = "contexto_operacional"
@@ -524,32 +524,32 @@ class SmithAgent:
 
                 if ja_tem_faturamento:
                     # Se JÁ tem faturamento, perguntar SÓ sobre funcionários
-                    fixed_response = f"Entendi, {lead.nome}! E quantas pessoas você tem no time de vendas/atendimento?"
+                    fixed_response = f"Entendi! E quantas pessoas você tem na equipe de vendas/atendimento?"
                 else:
                     # Se NÃO tem faturamento, perguntar ambos
-                    fixed_response = f"Bacana, {lead.nome}! Pra eu calcular o impacto real: quantas pessoas você tem no time de vendas e qual o faturamento mensal aproximado da empresa?"
+                    fixed_response = f"Bacana! Pra eu entender melhor o cenário: quantas pessoas vocês têm na equipe de vendas e qual o faturamento mensal aproximado?"
 
             elif not lead.qualification_data or not lead.qualification_data.faturamento_anual:
                 proximo_passo = "faturamento"
-                fixed_response = f"Ótimo, {lead.nome}! E qual o faturamento mensal aproximado? Isso me ajuda a calcular o ROI exato que conseguimos gerar pra vocês."
+                fixed_response = f"Show! E qual o faturamento mensal de vocês? Isso vai me ajudar a calcular o impacto real que conseguimos gerar."
 
             elif not lead.qualification_data or lead.qualification_data.is_decision_maker is None:
                 proximo_passo = "decisor"
-                fixed_response = f"Perfeito! {lead.nome}, você é o responsável por decisões de tecnologia/processos na {lead.empresa or 'empresa'}?"
+                fixed_response = f"Beleza! Você é quem toma as decisões sobre tecnologia e processos na {lead.empresa or 'empresa'}?"
 
             elif not lead.qualification_data or not lead.qualification_data.maior_desafio or lead.qualification_data.maior_desafio.strip() == "":
                 proximo_passo = "dor_principal"
-                fixed_response = f"Show! Me conta: qual o principal problema que tá impedindo vocês de crescer mais rápido? Perda de leads? Atendimento desorganizado? Processos manuais?"
+                fixed_response = f"Perfeito! Agora me diz: qual o principal problema que vocês enfrentam hoje? É perda de leads? Atendimento desorganizado? Processos manuais?"
 
             elif not lead.qualification_data or not lead.qualification_data.urgency or lead.qualification_data.urgency.strip() == "":
                 proximo_passo = "urgencia"
-                fixed_response = f"Entendi, {lead.nome}! E quanto ao timing: isso é urgente pra vocês ou dá pra deixar pros próximos meses?"
+                fixed_response = f"Entendi! E quanto ao timing: isso é urgente pra vocês ou dá pra deixar pros próximos meses?"
 
             else:
                 # LEAD TOTALMENTE QUALIFICADO - OFERECER AGENDAMENTO!
                 proximo_passo = "oferecer_agendamento"
                 logger.info(f"Lead {lead.nome} totalmente qualificado - oferecendo agendamento")
-                fixed_response = f"Perfeito, {lead.nome}! 🎯\n\nCom base no que você me contou (faturamento, urgência e desafio), consigo te mostrar exatamente como resolver isso.\n\nQue tal agendarmos 30min para eu te apresentar a solução completa?"
+                fixed_response = f"Perfeito, {lead.nome}! 🎯\n\nBaseado no que você me contou, tenho certeza que consigo te ajudar a resolver isso.\n\nBora marcar uma call de 30min pra eu te mostrar como funciona na prática?"
 
             # Usar resposta FIXA (sem passar por LLM)
             response = AIMessage(content=fixed_response)
@@ -757,11 +757,11 @@ OFEREÇA AS 2 OPÇÕES DE FORMA CLARA E OBJETIVA.""")
             else:
                 logger.warning("⚠️ Google Calendar não disponível - usando mensagem padrão")
 
-            # TEMPLATE FIXO - mostrar horários e pedir email (SEM passar por LLM!)
+            # TEMPLATE FIXO - mostrar horários (SEM passar por LLM!)
             fixed_response = f"""Aqui estão os horários disponíveis:
 
 {slots_text}
-Qual funciona melhor pra você? E qual seu email para eu enviar o convite do Google Calendar?"""
+Qual desses funciona melhor pra você?"""
 
             # Usar resposta FIXA (sem passar por LLM)
             response = AIMessage(content=fixed_response)
@@ -899,68 +899,37 @@ Qual funciona melhor pra você? E qual seu email para eu enviar o convite do Goo
                 }
                 logger.info(f"📅 Criado slot customizado: {chosen_slot['display']}")
 
-            # Se encontrou um horário, processar
+            # Se encontrou um horário, CRIAR REUNIÃO DIRETO (sem pedir email)
             if chosen_slot:
-                # Verificar se já tem email
-                if not lead.email or '@' not in lead.email:
-                    # PEDIR EMAIL
-                    system_prompt = f"""{SYSTEM_PROMPTS["solicitar_email"]}
+                logger.info(f"✅ Horário escolhido: {chosen_slot['display']} - criando reunião...")
 
-HORÁRIO ESCOLHIDO: {chosen_slot['display']}
+                # Criar reunião no Google Calendar usando ThreadPoolExecutor
+                import asyncio
+                from concurrent.futures import ThreadPoolExecutor
 
-Sua resposta deve ser CURTA (máximo 2 linhas) e pedir o email para enviar o convite do Google Calendar."""
+                # Email de fallback se o lead não tiver fornecido
+                email_to_use = lead.email if lead.email and '@' in lead.email else f"{lead.telefone}@whatsapp.placeholder.com"
 
-                    system_msg = SystemMessage(content=system_prompt)
-                    response = self.llm.invoke([system_msg] + list(messages))
+                def run_async_in_thread():
+                    new_loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(new_loop)
+                    try:
+                        meeting_dt = chosen_slot['start']
+                        if isinstance(meeting_dt, str):
+                            meeting_dt = datetime.fromisoformat(meeting_dt)
 
-                    messages.append(response)
-                    state["messages"] = messages
-                    state["current_stage"] = "aguardando_email"
-                    state["next_action"] = "end"  # ESPERAR email do lead (não voltar para confirm!)
-
-                    # PERSISTIR SLOT NO BANCO DE DADOS para não perder entre webhooks
-                    # Serializar datetime para string ISO antes de salvar
-                    slot_to_save = chosen_slot.copy()
-                    if isinstance(slot_to_save['start'], datetime):
-                        slot_to_save['start'] = slot_to_save['start'].isoformat()
-                    if isinstance(slot_to_save['end'], datetime):
-                        slot_to_save['end'] = slot_to_save['end'].isoformat()
-
-                    lead.temp_meeting_slot = slot_to_save
-                    state["chosen_slot"] = chosen_slot
-                    lead.status = LeadStatus.AGUARDANDO_ESCOLHA_HORARIO  # Manter mesmo status
-
-                    logger.info(f"📧 Solicitando email do lead para criar reunião (slot salvo no DB)")
-                    return state
-
-                # SE TEM EMAIL, CRIAR REUNIÃO
-                else:
-                    logger.info(f"✅ Lead tem email: {lead.email} - criando reunião...")
-
-                    # Criar reunião no Google Calendar usando ThreadPoolExecutor
-                    import asyncio
-                    from concurrent.futures import ThreadPoolExecutor
-
-                    def run_async_in_thread():
-                        new_loop = asyncio.new_event_loop()
-                        asyncio.set_event_loop(new_loop)
-                        try:
-                            meeting_dt = chosen_slot['start']
-                            if isinstance(meeting_dt, str):
-                                meeting_dt = datetime.fromisoformat(meeting_dt)
-
-                            return new_loop.run_until_complete(
-                                google_calendar_service.create_meeting(
-                                    lead_name=lead.nome,
-                                    lead_email=lead.email,
-                                    lead_phone=lead.telefone,
-                                    meeting_datetime=meeting_dt,
-                                    duration_minutes=60,
-                                    empresa=lead.empresa
-                                )
+                        return new_loop.run_until_complete(
+                            google_calendar_service.create_meeting(
+                                lead_name=lead.nome,
+                                lead_email=email_to_use,
+                                lead_phone=lead.telefone,
+                                meeting_datetime=meeting_dt,
+                                duration_minutes=60,
+                                empresa=lead.empresa
                             )
-                        finally:
-                            new_loop.close()
+                        )
+                    finally:
+                        new_loop.close()
 
                     meeting_result = None
                     try:
@@ -1003,93 +972,8 @@ Sua resposta deve ser CURTA (máximo 2 linhas) e pedir o email para enviar o con
                     logger.success(f"✅ Reunião confirmada para {lead.nome} em {data_formatada}")
                     return state
 
-            # SE NÃO DETECTOU HORÁRIO, verificar se é email
-            elif '@' in last_message:
-                # LEAD ENVIOU EMAIL
-                lead.email = last_message
-                logger.info(f"📧 Email capturado: {lead.email}")
-
-                # Recuperar slot escolhido do BANCO DE DADOS (não do state que foi perdido)
-                chosen_slot = lead.temp_meeting_slot if lead.temp_meeting_slot else state.get("chosen_slot")
-
-                if chosen_slot:
-                    # Deserializar datetime se estiver como string
-                    if isinstance(chosen_slot.get('start'), str):
-                        chosen_slot['start'] = datetime.fromisoformat(chosen_slot['start'])
-                    if isinstance(chosen_slot.get('end'), str):
-                        chosen_slot['end'] = datetime.fromisoformat(chosen_slot['end'])
-
-                    logger.info(f"✅ Slot recuperado do banco: {chosen_slot.get('display', 'N/A')}")
-
-                if chosen_slot:
-                    # Criar reunião
-                    import asyncio
-                    from concurrent.futures import ThreadPoolExecutor
-
-                    def run_async_in_thread():
-                        new_loop = asyncio.new_event_loop()
-                        asyncio.set_event_loop(new_loop)
-                        try:
-                            meeting_dt = chosen_slot['start']
-                            if isinstance(meeting_dt, str):
-                                meeting_dt = datetime.fromisoformat(meeting_dt)
-
-                            return new_loop.run_until_complete(
-                                google_calendar_service.create_meeting(
-                                    lead_name=lead.nome,
-                                    lead_email=lead.email,
-                                    lead_phone=lead.telefone,
-                                    meeting_datetime=meeting_dt,
-                                    duration_minutes=60,
-                                    empresa=lead.empresa
-                                )
-                            )
-                        finally:
-                            new_loop.close()
-
-                    meeting_result = None
-                    try:
-                        with ThreadPoolExecutor(max_workers=1) as executor:
-                            future = executor.submit(run_async_in_thread)
-                            meeting_result = future.result(timeout=10)
-                    except Exception as calendar_error:
-                        logger.error(f"❌ Erro ao criar reunião: {calendar_error}")
-
-                    # Confirmar agendamento com LINK do Google Calendar
-                    meeting_dt = chosen_slot['start']
-                    if isinstance(meeting_dt, str):
-                        meeting_dt = datetime.fromisoformat(meeting_dt)
-
-                    # Formatar data de forma mais amigável
-                    dias_semana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
-                    dia_semana = dias_semana[meeting_dt.weekday()]
-                    data_formatada = f"{dia_semana}, {meeting_dt.strftime('%d/%m às %Hh')}"
-
-                    # Mensagem FIXA com link do Google Calendar
-                    confirmation_text = f"✅ Agendado! {data_formatada} 📅\n\n"
-
-                    if meeting_result and meeting_result.get('event_link'):
-                        confirmation_text += f"👉 Adicione ao seu calendário:\n{meeting_result['event_link']}\n\n"
-
-                    confirmation_text += "Te vejo lá! Qualquer dúvida, é só chamar 🚀"
-
-                    response = AIMessage(content=confirmation_text)
-
-                    messages.append(response)
-                    lead.status = LeadStatus.AGENDAMENTO_MARCADO
-                    lead.lead_score = 95
-                    lead.temp_meeting_slot = None  # LIMPAR slot temporário após criação
-
-                    state["messages"] = messages
-                    state["lead"] = lead
-                    state["current_stage"] = "agendamento_confirmado"
-                    state["next_action"] = "end"
-
-                    logger.success(f"✅ Reunião confirmada para {lead.nome} em {data_formatada}")
-                    return state
-
-            # Se não entendeu, pedir clarificação
-            logger.warning("⚠️ Não foi possível detectar escolha de horário ou email")
+            # Se não detectou horário, pedir clarificação
+            logger.warning("⚠️ Não foi possível detectar escolha de horário")
 
             system_prompt = """Você é Smith, da AutomateX.
 

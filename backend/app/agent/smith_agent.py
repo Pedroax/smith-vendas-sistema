@@ -940,46 +940,46 @@ Qual desses funciona melhor pra você?"""
                     finally:
                         new_loop.close()
 
-                    meeting_result = None
-                    try:
-                        with ThreadPoolExecutor(max_workers=1) as executor:
-                            future = executor.submit(run_async_in_thread)
-                            meeting_result = future.result(timeout=10)
-                    except Exception as calendar_error:
-                        logger.error(f"❌ Erro ao criar reunião: {calendar_error}")
+                meeting_result = None
+                try:
+                    with ThreadPoolExecutor(max_workers=1) as executor:
+                        future = executor.submit(run_async_in_thread)
+                        meeting_result = future.result(timeout=10)
+                except Exception as calendar_error:
+                    logger.error(f"❌ Erro ao criar reunião: {calendar_error}")
 
-                    # Confirmar agendamento com LINK do Google Calendar
-                    meeting_dt = chosen_slot['start']
-                    if isinstance(meeting_dt, str):
-                        meeting_dt = datetime.fromisoformat(meeting_dt)
+                # Confirmar agendamento com LINK do Google Calendar
+                meeting_dt = chosen_slot['start']
+                if isinstance(meeting_dt, str):
+                    meeting_dt = datetime.fromisoformat(meeting_dt)
 
-                    # Formatar data de forma mais amigável
-                    dias_semana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
-                    dia_semana = dias_semana[meeting_dt.weekday()]
-                    data_formatada = f"{dia_semana}, {meeting_dt.strftime('%d/%m às %Hh')}"
+                # Formatar data de forma mais amigável
+                dias_semana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
+                dia_semana = dias_semana[meeting_dt.weekday()]
+                data_formatada = f"{dia_semana}, {meeting_dt.strftime('%d/%m às %Hh')}"
 
-                    # Mensagem FIXA com link do Google Calendar
-                    confirmation_text = f"✅ Agendado! {data_formatada} 📅\n\n"
+                # Mensagem FIXA com link do Google Calendar
+                confirmation_text = f"✅ Agendado! {data_formatada} 📅\n\n"
 
-                    if meeting_result and meeting_result.get('event_link'):
-                        confirmation_text += f"👉 Adicione ao seu calendário:\n{meeting_result['event_link']}\n\n"
+                if meeting_result and meeting_result.get('event_link'):
+                    confirmation_text += f"👉 Adicione ao seu calendário:\n{meeting_result['event_link']}\n\n"
 
-                    confirmation_text += "Te vejo lá! Qualquer dúvida, é só chamar 🚀"
+                confirmation_text += "Te vejo lá! Qualquer dúvida, é só chamar 🚀"
 
-                    response = AIMessage(content=confirmation_text)
+                response = AIMessage(content=confirmation_text)
 
-                    messages.append(response)
-                    lead.status = LeadStatus.AGENDAMENTO_MARCADO
-                    lead.lead_score = 95
-                    lead.temp_meeting_slot = None  # LIMPAR slot temporário após criação
+                messages.append(response)
+                lead.status = LeadStatus.AGENDAMENTO_MARCADO
+                lead.lead_score = 95
+                lead.temp_meeting_slot = None  # LIMPAR slot temporário após criação
 
-                    state["messages"] = messages
-                    state["lead"] = lead
-                    state["current_stage"] = "agendamento_confirmado"
-                    state["next_action"] = "end"
+                state["messages"] = messages
+                state["lead"] = lead
+                state["current_stage"] = "agendamento_confirmado"
+                state["next_action"] = "end"
 
-                    logger.success(f"✅ Reunião confirmada para {lead.nome} em {data_formatada}")
-                    return state
+                logger.success(f"✅ Reunião confirmada para {lead.nome} em {data_formatada}")
+                return state
 
             # Se não detectou horário, pedir clarificação
             logger.warning("⚠️ Não foi possível detectar escolha de horário")

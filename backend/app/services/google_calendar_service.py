@@ -160,7 +160,7 @@ class GoogleCalendarService:
             # O usuário pode adicionar o Meet manualmente no calendário depois
             event = {
                 'summary': f'Reunião - {lead_name}' + (f' ({empresa})' if empresa else ''),
-                'description': description + "\n\n💡 Dica: Clique em 'Adicionar Google Meet' ao abrir o evento no calendário",
+                'description': description + f"\n\n📧 Lead Email: {lead_email}\n\n💡 Dica: Clique em 'Adicionar Google Meet' ao abrir o evento no calendário",
                 'start': {
                     'dateTime': meeting_datetime.isoformat(),
                     'timeZone': 'America/Sao_Paulo',
@@ -169,18 +169,12 @@ class GoogleCalendarService:
                     'dateTime': end_datetime.isoformat(),
                     'timeZone': 'America/Sao_Paulo',
                 },
-                # Adicionar lead como participante para receber convite por email
-                'attendees': [
-                    {
-                        'email': lead_email,
-                        'displayName': lead_name,
-                        'responseStatus': 'needsAction'
-                    }
-                ],
+                # Não adicionar attendees - service account não pode enviar convites
+                # Link do evento será enviado por WhatsApp para o lead adicionar manualmente
                 'reminders': {
                     'useDefault': False,
                     'overrides': [
-                        {'method': 'email', 'minutes': 60},        # Email 1 hora antes
+                        {'method': 'popup', 'minutes': 60},        # 1 hora antes
                         {'method': 'popup', 'minutes': 10},        # 10 min antes
                     ],
                 },
@@ -190,7 +184,7 @@ class GoogleCalendarService:
             created_event = self.service.events().insert(
                 calendarId=settings.google_calendar_id,
                 body=event,
-                sendUpdates='all'  # Enviar convite por email para todos os participantes
+                sendUpdates='none'  # Service account não pode enviar emails
             ).execute()
 
             logger.success(f"✅ Reunião criada no Google Calendar para {lead_name}")

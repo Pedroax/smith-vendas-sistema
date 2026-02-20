@@ -970,22 +970,25 @@ Sua resposta deve ser CURTA (máximo 2 linhas) e pedir o email para enviar o con
                     except Exception as calendar_error:
                         logger.error(f"❌ Erro ao criar reunião: {calendar_error}")
 
-                    # Confirmar agendamento
+                    # Confirmar agendamento com LINK do Google Calendar
                     meeting_dt = chosen_slot['start']
                     if isinstance(meeting_dt, str):
                         meeting_dt = datetime.fromisoformat(meeting_dt)
 
-                    data_hora_formatada = meeting_dt.strftime('%d/%m/%Y às %H:%M')
+                    # Formatar data de forma mais amigável
+                    dias_semana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
+                    dia_semana = dias_semana[meeting_dt.weekday()]
+                    data_formatada = f"{dia_semana}, {meeting_dt.strftime('%d/%m às %Hh')}"
 
-                    system_prompt = f"""{SYSTEM_PROMPTS["confirmar_agendamento"]}
+                    # Mensagem FIXA com link do Google Calendar
+                    confirmation_text = f"✅ Agendado! {data_formatada} 📅\n\n"
 
-DATA/HORA: {data_hora_formatada}
-EMAIL DO LEAD: {lead.email}
+                    if meeting_result and meeting_result.get('event_link'):
+                        confirmation_text += f"👉 Adicione ao seu calendário:\n{meeting_result['event_link']}\n\n"
 
-Confirme o agendamento de forma CURTA (máximo 3-4 linhas)."""
+                    confirmation_text += "Te vejo lá! Qualquer dúvida, é só chamar 🚀"
 
-                    system_msg = SystemMessage(content=system_prompt)
-                    response = self.llm.invoke([system_msg] + list(messages))
+                    response = AIMessage(content=confirmation_text)
 
                     messages.append(response)
                     lead.status = LeadStatus.AGENDAMENTO_MARCADO
@@ -997,7 +1000,7 @@ Confirme o agendamento de forma CURTA (máximo 3-4 linhas)."""
                     state["current_stage"] = "agendamento_confirmado"
                     state["next_action"] = "end"
 
-                    logger.success(f"✅ Reunião confirmada para {lead.nome} em {data_hora_formatada}")
+                    logger.success(f"✅ Reunião confirmada para {lead.nome} em {data_formatada}")
                     return state
 
             # SE NÃO DETECTOU HORÁRIO, verificar se é email
@@ -1052,22 +1055,25 @@ Confirme o agendamento de forma CURTA (máximo 3-4 linhas)."""
                     except Exception as calendar_error:
                         logger.error(f"❌ Erro ao criar reunião: {calendar_error}")
 
-                    # Confirmar agendamento
+                    # Confirmar agendamento com LINK do Google Calendar
                     meeting_dt = chosen_slot['start']
                     if isinstance(meeting_dt, str):
                         meeting_dt = datetime.fromisoformat(meeting_dt)
 
-                    data_hora_formatada = meeting_dt.strftime('%d/%m/%Y às %H:%M')
+                    # Formatar data de forma mais amigável
+                    dias_semana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
+                    dia_semana = dias_semana[meeting_dt.weekday()]
+                    data_formatada = f"{dia_semana}, {meeting_dt.strftime('%d/%m às %Hh')}"
 
-                    system_prompt = f"""{SYSTEM_PROMPTS["confirmar_agendamento"]}
+                    # Mensagem FIXA com link do Google Calendar
+                    confirmation_text = f"✅ Agendado! {data_formatada} 📅\n\n"
 
-DATA/HORA: {data_hora_formatada}
-EMAIL DO LEAD: {lead.email}
+                    if meeting_result and meeting_result.get('event_link'):
+                        confirmation_text += f"👉 Adicione ao seu calendário:\n{meeting_result['event_link']}\n\n"
 
-Confirme o agendamento de forma CURTA (máximo 3-4 linhas)."""
+                    confirmation_text += "Te vejo lá! Qualquer dúvida, é só chamar 🚀"
 
-                    system_msg = SystemMessage(content=system_prompt)
-                    response = self.llm.invoke([system_msg] + list(messages))
+                    response = AIMessage(content=confirmation_text)
 
                     messages.append(response)
                     lead.status = LeadStatus.AGENDAMENTO_MARCADO
@@ -1079,7 +1085,7 @@ Confirme o agendamento de forma CURTA (máximo 3-4 linhas)."""
                     state["current_stage"] = "agendamento_confirmado"
                     state["next_action"] = "end"
 
-                    logger.success(f"✅ Reunião confirmada para {lead.nome} em {data_hora_formatada}")
+                    logger.success(f"✅ Reunião confirmada para {lead.nome} em {data_formatada}")
                     return state
 
             # Se não entendeu, pedir clarificação

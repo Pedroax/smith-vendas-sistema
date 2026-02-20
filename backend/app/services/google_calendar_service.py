@@ -169,12 +169,18 @@ class GoogleCalendarService:
                     'dateTime': end_datetime.isoformat(),
                     'timeZone': 'America/Sao_Paulo',
                 },
-                # Não adicionar attendees quando usar service account
-                # Service accounts precisam de Domain-Wide Delegation para isso
+                # Adicionar lead como participante para receber convite por email
+                'attendees': [
+                    {
+                        'email': lead_email,
+                        'displayName': lead_name,
+                        'responseStatus': 'needsAction'
+                    }
+                ],
                 'reminders': {
                     'useDefault': False,
                     'overrides': [
-                        {'method': 'popup', 'minutes': 60},        # 1 hora antes
+                        {'method': 'email', 'minutes': 60},        # Email 1 hora antes
                         {'method': 'popup', 'minutes': 10},        # 10 min antes
                     ],
                 },
@@ -184,7 +190,7 @@ class GoogleCalendarService:
             created_event = self.service.events().insert(
                 calendarId=settings.google_calendar_id,
                 body=event,
-                sendUpdates='none'  # Não enviar emails (service account)
+                sendUpdates='all'  # Enviar convite por email para todos os participantes
             ).execute()
 
             logger.success(f"✅ Reunião criada no Google Calendar para {lead_name}")

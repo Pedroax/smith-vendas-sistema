@@ -288,6 +288,62 @@ Responda APENAS com a mensagem, sem explicações."""
 
         return None
 
+    async def _generate_plano_sem_site(
+        self,
+        company_name: str,
+        lead_nome: str,
+        url: str
+    ) -> Optional[str]:
+        """
+        Gera análise quando o site não pôde ser acessado.
+        Usa apenas o nome da empresa e URL para inferir o segmento.
+        """
+        try:
+            from langchain_openai import ChatOpenAI
+            from langchain_core.messages import SystemMessage
+
+            llm = ChatOpenAI(
+                model=settings.openai_model,
+                temperature=0.4,
+                api_key=settings.openai_api_key,
+                request_timeout=20
+            )
+
+            prompt = f"""Você é Smith, consultor da AutomateX que vende automação de atendimento e vendas via IA.
+
+EMPRESA: {company_name}
+URL: {url}
+
+Você não conseguiu acessar o site, mas pelo nome da empresa e URL consegue inferir o segmento.
+
+Gere uma mensagem de WhatsApp que:
+1. Mostre que você pesquisou a empresa (mesmo sem acesso ao site)
+2. Faça uma pergunta inteligente sobre o negócio deles baseada no que o nome/URL sugere
+3. Conecte com uma oportunidade de automação no atendimento
+4. Convide para call de 30min
+
+REGRAS:
+- Máximo 5-6 linhas
+- WhatsApp casual mas profissional
+- NUNCA use "chatbot", "robô" ou "bot" — use "IA de atendimento" ou "agente inteligente"
+- NÃO invente dados específicos que você não sabe
+- Seja honesto mas curioso: "Pesquisei sobre a {company_name}..."
+- Tom de consultor interessado, não de vendedor
+
+Responda APENAS com a mensagem."""
+
+            response = await llm.ainvoke([SystemMessage(content=prompt)])
+            result = response.content.strip()
+
+            if result and len(result) > 30:
+                logger.info(f"Plano gerado sem acesso ao site para {company_name}")
+                return result
+
+        except Exception as e:
+            logger.error(f"Erro ao gerar plano sem site: {e}")
+
+        return None
+
     async def research_empresa_com_plano(
         self,
         lead,
@@ -306,8 +362,16 @@ Responda APENAS com a mensagem, sem explicações."""
 
             content = await self.website_research.fetch_website_content(url)
             if not content:
-                logger.warning(f"Não foi possível acessar {url} — site bloqueou ou está offline")
-                return None
+                logger.warning(f"Não foi possível acessar {url} — usando análise baseada no domínio")
+                plano = await self._generate_plano_sem_site(empresa_nome, lead_nome, url)
+                if plano:
+                    self._cache[str(lead.id)] = {
+                        "insight": plano[:120],
+                        "full_analysis": plano,
+                        "timestamp": datetime.now(),
+                        "empresa": empresa_nome
+                    }
+                return plano
 
             logger.info(f"✅ Site acessado ({len(content)} chars) — gerando análise personalizada")
 

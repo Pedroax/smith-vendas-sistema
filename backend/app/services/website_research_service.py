@@ -87,38 +87,66 @@ class WebsiteResearchService:
         Returns:
             Texto extraído do site ou None
         """
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+            'Accept-Encoding': 'gzip, deflate',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+        }
+        # Lista de URLs para tentar (https primeiro, http como fallback)
+        urls_to_try = [url]
+        if url.startswith("https://"):
+            urls_to_try.append(url.replace("https://", "http://", 1))
+
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as response:
-                    if response.status != 200:
-                        logger.warning(f"Site retornou status {response.status}")
-                        return None
+            connector = aiohttp.TCPConnector(ssl=False)
+            async with aiohttp.ClientSession(headers=headers, connector=connector) as session:
+                for attempt_url in urls_to_try:
+                    try:
+                        async with session.get(
+                            attempt_url,
+                            timeout=aiohttp.ClientTimeout(total=15),
+                            allow_redirects=True
+                        ) as response:
+                            if response.status not in (200, 201):
+                                logger.warning(f"Site retornou status {response.status} para {attempt_url}")
+                                continue
 
-                    html = await response.text()
+                            html = await response.text()
 
-                    # Usar BeautifulSoup para extrair texto
-                    soup = BeautifulSoup(html, 'html.parser')
+                            # Usar BeautifulSoup para extrair texto
+                            soup = BeautifulSoup(html, 'html.parser')
 
-                    # Remover scripts e styles
-                    for script in soup(["script", "style"]):
-                        script.decompose()
+                            # Remover scripts e styles
+                            for script in soup(["script", "style"]):
+                                script.decompose()
 
-                    # Pegar texto
-                    text = soup.get_text()
+                            text = soup.get_text()
 
-                    # Limpar espaços em branco
-                    lines = (line.strip() for line in text.splitlines())
-                    chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
-                    text = ' '.join(chunk for chunk in chunks if chunk)
+                            # Limpar espaços em branco
+                            lines = (line.strip() for line in text.splitlines())
+                            chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+                            text = ' '.join(chunk for chunk in chunks if chunk)
 
-                    # Limitar tamanho (primeiros 3000 caracteres para análise)
-                    text = text[:3000]
+                            # Limitar tamanho
+                            text = text[:3000]
 
-                    return text
+                            if text.strip():
+                                logger.info(f"✅ Site acessado com sucesso: {attempt_url} ({len(text)} chars)")
+                                return text
 
-        except asyncio.TimeoutError:
-            logger.warning(f"Timeout ao acessar {url}")
+                    except asyncio.TimeoutError:
+                        logger.warning(f"Timeout ao acessar {attempt_url}")
+                        continue
+                    except Exception as inner_e:
+                        logger.warning(f"Erro ao acessar {attempt_url}: {inner_e}")
+                        continue
+
+            logger.warning(f"Não foi possível acessar nenhuma versão de {url}")
             return None
+
         except Exception as e:
             logger.error(f"Erro ao fazer fetch do site: {e}")
             return None

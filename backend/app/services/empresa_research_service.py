@@ -176,6 +176,108 @@ Responda APENAS com a frase, sem explicações."""
             logger.error(f"Erro ao pesquisar empresa: {e}")
             return None
 
+    def _generate_plano_personalizado(
+        self,
+        company_name: str,
+        lead_nome: str,
+        website_content: str
+    ) -> Optional[str]:
+        """
+        Usa Gemini para gerar análise completa e personalizada baseada no site.
+        Chamado quando o lead pergunta 'como você me ajudaria?' e manda o site.
+        """
+        model = self._init_gemini()
+        if not model:
+            return None
+
+        try:
+            prompt = f"""Você é Smith, consultor da AutomateX que vende automação de atendimento e vendas via IA.
+Você acabou de analisar o site da empresa de {lead_nome}.
+
+EMPRESA: {company_name}
+
+CONTEÚDO DO SITE:
+{website_content[:3000]}
+
+Gere uma resposta para WhatsApp que mostre que você REALMENTE analisou o site e entende o negócio deles.
+
+A mensagem deve:
+1. Mencionar 2-3 detalhes ESPECÍFICOS que você encontrou no site (produtos, serviços, segmento, público)
+2. Identificar onde há oportunidade clara de automação/IA no atendimento deles (baseado no que você viu)
+3. Ser específico sobre o que a AutomateX faria na prática para essa empresa
+4. Terminar com convite para call de 30min
+
+REGRAS:
+- Máximo 6-7 linhas
+- WhatsApp casual mas profissional
+- NUNCA use as palavras "chatbot", "robô" ou "bot" — use "IA de atendimento" ou "agente inteligente"
+- Mencione detalhes REAIS do site — não invente
+- Seja específico, não genérico
+- Tom de consultor que entende o negócio deles, não de vendedor
+
+Responda APENAS com a mensagem, sem explicações."""
+
+            response = model.generate_content(prompt)
+            plano = response.text.strip()
+
+            if plano and len(plano) > 50:
+                logger.success(f"Plano personalizado gerado para {company_name}: {plano[:80]}...")
+                return plano
+
+        except Exception as e:
+            logger.error(f"Erro ao gerar plano personalizado com Gemini: {e}")
+
+        return None
+
+    async def research_empresa_com_plano(
+        self,
+        lead,
+        url: str
+    ) -> Optional[str]:
+        """
+        Pesquisa completa e síncrona do site da empresa.
+        Retorna análise personalizada para usar como resposta imediata.
+        Chamada quando lead envia URL durante conversa.
+        """
+        try:
+            empresa_nome = lead.empresa or self.website_research.extract_company_name(url)
+            lead_nome = lead.nome.split()[0] if lead.nome else (lead.nome or "você")
+
+            logger.info(f"🔍 Analisando site completo: {url} para {empresa_nome}")
+
+            content = await self.website_research.fetch_website_content(url)
+            if not content:
+                logger.warning(f"Não foi possível acessar {url}")
+                return None
+
+            # Gerar plano personalizado com Gemini
+            gemini_model = self._init_gemini()
+            if gemini_model:
+                plano = await asyncio.to_thread(
+                    self._generate_plano_personalizado,
+                    empresa_nome,
+                    lead_nome,
+                    content
+                )
+
+                if plano:
+                    # Salvar no cache (insight curto + plano completo)
+                    self._cache[str(lead.id)] = {
+                        "insight": plano[:120],
+                        "full_analysis": plano,
+                        "timestamp": datetime.now(),
+                        "empresa": empresa_nome
+                    }
+                    return plano
+
+            # Fallback sem Gemini
+            logger.info("Gemini não disponível para plano personalizado")
+            return None
+
+        except Exception as e:
+            logger.error(f"Erro na análise completa da empresa: {e}")
+            return None
+
     def get_cached_insight(self, lead_id) -> Optional[str]:
         """Retorna insight do cache se existir e for recente (< 24h)"""
         cached = self._cache.get(str(lead_id))

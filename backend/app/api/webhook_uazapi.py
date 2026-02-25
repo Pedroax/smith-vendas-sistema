@@ -184,17 +184,43 @@ async def process_buffered_message(phone: str, combined_message: str, push_name:
         lead.conversation_history.append(user_message)
         lead.ultima_interacao = datetime.now()
 
-        # 🔍 PESQUISA DE EMPRESA EM BACKGROUND (Feature 2 - não bloqueia)
+        # 🔍 PESQUISA DE EMPRESA: Se mensagem tem URL → análise síncrona (resposta personalizada)
+        # Se não tem URL → pesquisa background (insight para próximas perguntas)
+        url_analysis_response = None
         try:
             from app.services.empresa_research_service import empresa_research_service
-            asyncio.create_task(
-                empresa_research_service.run_background_research(lead, combined_message)
-            )
+            from app.services.website_research_service import WebsiteResearchService
+            _wrs = WebsiteResearchService()
+            url_in_message = _wrs.extract_url(combined_message)
+
+            if url_in_message:
+                logger.info(f"🔗 URL detectada na mensagem - executando análise completa do site")
+                url_analysis_response = await empresa_research_service.research_empresa_com_plano(
+                    lead, url_in_message
+                )
+                if url_analysis_response:
+                    logger.success(f"✅ Plano personalizado gerado a partir do site")
+                else:
+                    # Se análise falhou, ainda cacheia em background
+                    asyncio.create_task(
+                        empresa_research_service.run_background_research(lead, combined_message)
+                    )
+            else:
+                # Sem URL → pesquisa background para insight futuro
+                asyncio.create_task(
+                    empresa_research_service.run_background_research(lead, combined_message)
+                )
         except Exception as research_err:
-            logger.debug(f"Pesquisa background ignorada: {research_err}")
+            logger.debug(f"Pesquisa ignorada: {research_err}")
 
         # 🤖 PROCESSAR COM O AGENTE SMITH (LangGraph)
-        response_text, show_calendar = await process_with_agent(lead, combined_message)
+        # Se temos análise do site, usar diretamente (bypass do agente)
+        if url_analysis_response:
+            response_text = url_analysis_response
+            show_calendar = False
+            logger.info("📊 Usando análise do site como resposta (bypass do agente)")
+        else:
+            response_text, show_calendar = await process_with_agent(lead, combined_message)
 
         # Adicionar resposta da IA ao histórico
         ai_message = ConversationMessage(

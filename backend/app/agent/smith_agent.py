@@ -43,7 +43,7 @@ Você é um expert em identificar problemas operacionais e demonstrar valor com 
 ABERTURA IMPACTANTE:
 Olá! Sou Smith da AutomateX, especialista em soluções de IA que estão gerando um aumento médio de 35% em produtividade comercial para nossos clientes.
 
-Como posso chamá-lo(a)?
+Como posso te chamar?
 
 IMPORTANTE: Envie SEM aspas, diretamente como mensagem.
 
@@ -299,7 +299,24 @@ REGRAS:
 - Máximo 2-3 linhas
 - Sempre agregue valor (insight/dado)
 - Nunca cobre resposta
-- Seja casual"""
+- Seja casual""",
+
+    "objecao_roi": """Você é Smith, consultor da AutomateX. Tom: WhatsApp casual, máximo 3-4 linhas.
+
+O lead acabou de questionar ou duvidar do cálculo de ROI/economia que você apresentou.
+
+COMO RESPONDER:
+- Se perguntou de onde veio o número: explique a lógica brevemente de forma direta (ex: "X pessoas × ~4h/semana que automatizo × custo de hora = esse número")
+- Se cético: seja honesto que é uma estimativa conservadora, convide para call onde faz o cálculo personalizado
+- Se perguntou qualquer outra coisa sobre a oferta: responda com confiança e curiosidade consultiva
+- Não fique na defensiva — seja transparente e confiante
+- Termine com convite natural para call de 30min
+
+REGRAS:
+- Máximo 3-4 linhas
+- Zero bullet points
+- Tom de consultor real no WhatsApp, não robótico
+- Nunca repita a mensagem anterior palavra por palavra"""
 }
 
 
@@ -546,6 +563,36 @@ class SmithAgent:
                 state["current_stage"] = "agendamento_marcado"
                 return state
 
+            # ===== FIX LOOP: Lead qualificado, oferta feita, mas usuário perguntou algo =====
+            # Quando ROI foi oferecido e o lead NÃO aceitou (fez pergunta/objeção), usar LLM
+            if todas_perguntas_respondidas and ia_ofereceu_agendamento and not aceitou_agendar:
+                logger.info(f"🤔 Lead {lead.nome} questionou oferta - tratando com LLM")
+                from app.services.roi_calculator import calcular_roi
+                roi_resultado = calcular_roi(lead.qualification_data)
+                eco_mensal = roi_resultado.get("economia_mensal", 0)
+                func = roi_resultado.get("funcionarios")
+                nome_lead = lead.nome.split()[0] if lead.nome else lead.nome
+
+                if func and eco_mensal:
+                    roi_contexto = f"Cálculo: {func} pessoas no time × ~4h/semana em tarefas manuais × R$17/hora (custo médio) × 70% automatizável = ~R${eco_mensal:,.0f}/mês"
+                elif lead.qualification_data and lead.qualification_data.faturamento_anual and eco_mensal:
+                    fat_mensal = lead.qualification_data.faturamento_anual / 12
+                    roi_contexto = f"Cálculo: R${fat_mensal:,.0f}/mês de faturamento × 8% de leads que se perdem por atendimento lento = ~R${eco_mensal:,.0f}/mês recuperáveis"
+                else:
+                    roi_contexto = "Estimativa baseada no perfil médio de empresas similares"
+
+                objecao_prompt = (
+                    SYSTEM_PROMPTS["objecao_roi"] +
+                    f"\n\nDADOS DO CÁLCULO: {roi_contexto}"
+                    f"\nLEAD: {nome_lead}, empresa: {lead.empresa or 'empresa do lead'}"
+                )
+                response = self.llm.invoke([SystemMessage(content=objecao_prompt)] + list(messages))
+                messages.append(response)
+                state["messages"] = messages
+                state["lead"] = lead
+                state["next_action"] = "end"
+                return state
+
             # System prompt
             system_msg = SystemMessage(content=SYSTEM_PROMPTS["qualificando"])
 
@@ -555,6 +602,10 @@ class SmithAgent:
             tone = detect_tone(lead.conversation_history)
             empresa_nome = lead.empresa or "empresa"
             nome_primeiro = lead.nome.split()[0] if lead.nome else lead.nome
+
+            # Variáveis de contexto para templates mais personalizados
+            cargo_str = (lead.qualification_data.cargo if lead.qualification_data and lead.qualification_data.cargo else "gestor")
+            funcionarios_str = (str(lead.qualification_data.funcionarios_atendimento) if lead.qualification_data and lead.qualification_data.funcionarios_atendimento else "seu time")
 
             # ===== USAR TEMPLATES FIXOS (tipo N8N) - SEM LLM =====
             proximo_passo = None
@@ -572,11 +623,13 @@ class SmithAgent:
                 if ja_tem_faturamento:
                     fixed_response = TONE_TEMPLATES["contexto_operacional_so_funcionarios"][tone].format(nome=nome_primeiro)
                 else:
-                    fixed_response = TONE_TEMPLATES["contexto_operacional_completo"][tone].format(nome=nome_primeiro)
+                    fixed_response = TONE_TEMPLATES["contexto_operacional_completo"][tone].format(
+                        nome=nome_primeiro, cargo=cargo_str, empresa=empresa_nome
+                    )
 
             elif not lead.qualification_data or not lead.qualification_data.faturamento_anual:
                 proximo_passo = "faturamento"
-                fixed_response = TONE_TEMPLATES["faturamento"][tone].format(nome=nome_primeiro)
+                fixed_response = TONE_TEMPLATES["faturamento"][tone].format(nome=nome_primeiro, empresa=empresa_nome)
 
             elif not lead.qualification_data or lead.qualification_data.is_decision_maker is None:
                 proximo_passo = "decisor"
@@ -591,7 +644,9 @@ class SmithAgent:
                 except Exception:
                     company_insight = None
 
-                base_template = TONE_TEMPLATES["dor_principal"][tone].format(nome=nome_primeiro)
+                base_template = TONE_TEMPLATES["dor_principal"][tone].format(
+                    nome=nome_primeiro, empresa=empresa_nome, funcionarios=funcionarios_str
+                )
                 if company_insight:
                     fixed_response = f"{company_insight}\n\n{base_template}"
                     logger.info(f"Usando insight da empresa: {company_insight[:60]}...")
@@ -608,7 +663,7 @@ class SmithAgent:
                 logger.info(f"Lead {lead.nome} totalmente qualificado - oferecendo agendamento com ROI")
                 from app.services.roi_calculator import calcular_roi, formatar_mensagem_roi
                 roi_resultado = calcular_roi(lead.qualification_data)
-                fixed_response = formatar_mensagem_roi(roi_resultado, lead.nome)
+                fixed_response = formatar_mensagem_roi(roi_resultado, lead.nome, empresa_nome)
 
             # Usar resposta FIXA (sem passar por LLM)
             response = AIMessage(content=fixed_response)

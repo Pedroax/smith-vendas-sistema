@@ -73,18 +73,19 @@ def calcular_roi(qualification_data) -> dict:
     }
 
 
-def formatar_mensagem_roi(resultado: dict, lead_nome: str) -> str:
+def formatar_mensagem_roi(resultado: dict, lead_nome: str, empresa_nome: str = None) -> str:
     """
     Gera mensagem de oferta de agendamento com ROI personalizado.
     """
     nome = lead_nome.split()[0] if lead_nome else lead_nome
+    empresa = empresa_nome or "vocês"
 
     if not resultado.get("tem_numero"):
         # Fallback genérico sem número
         return (
             f"Perfeito, {nome}! 🎯\n\n"
-            f"Baseado no que você me contou, tenho certeza que consigo te ajudar a resolver isso.\n\n"
-            f"Bora marcar uma call de 30min pra eu te mostrar como funciona na prática?"
+            f"Pelo que você me contou, tenho certeza que consigo gerar resultado real pra {empresa}.\n\n"
+            f"Vale uma call de 30min pra eu te mostrar como funciona na prática?"
         )
 
     economia_mensal = resultado.get("economia_mensal", 0)
@@ -98,15 +99,16 @@ def formatar_mensagem_roi(resultado: dict, lead_nome: str) -> str:
 
     if funcionarios:
         return (
-            f"Perfeito, {nome}! 🎯\n\n"
-            f"Fiz as contas aqui: com {funcionarios} pessoas no time, automatizando o atendimento "
-            f"você pode economizar ~{valor_fmt}/mês em horas manuais.\n\n"
-            f"Vale 30min de call pra eu te mostrar como funciona na prática?"
+            f"Rodei os números aqui, {nome} 🧮\n\n"
+            f"Com {funcionarios} pessoas no time automatizando tarefas repetitivas, "
+            f"a estimativa é de ~{valor_fmt}/mês em horas recuperadas — "
+            f"só isso já paga o investimento em 1-2 meses.\n\n"
+            f"Vale uma call de 30min pra eu mostrar como implementar isso na {empresa}?"
         )
     else:
         return (
-            f"Perfeito, {nome}! 🎯\n\n"
-            f"Fiz as contas aqui: com o faturamento de vocês, só recuperando leads que perdem por "
-            f"lentidão no atendimento, estamos falando de ~{valor_fmt}/mês.\n\n"
-            f"Vale 30min de call pra eu te mostrar como funciona na prática?"
+            f"Rodei os números aqui, {nome} 🧮\n\n"
+            f"Com o faturamento de vocês, só recuperando os leads que se perdem "
+            f"por atendimento lento, estamos falando de ~{valor_fmt}/mês.\n\n"
+            f"Vale uma call de 30min pra eu mostrar como isso funciona na {empresa}?"
         )

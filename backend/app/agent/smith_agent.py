@@ -335,6 +335,44 @@ class SmithAgent:
             if current_stage and current_stage != "novo":
                 logger.info(f"Lead {lead.nome} já em conversa (stage={current_stage}), roteando...")
 
+                # 🧠 MEMÓRIA ENTRE SESSÕES: Se lead sumiu por mais de 4h e voltou
+                HORAS_RETORNO = 4
+                if (lead.ultima_interacao and
+                    current_stage in ["contato_inicial", "qualificando"] and
+                    lead.status not in [LeadStatus.AGENDAMENTO_MARCADO, LeadStatus.PERDIDO]):
+
+                    from datetime import timezone
+                    now = datetime.now()
+                    ultima = lead.ultima_interacao
+                    # Normalizar timezone
+                    if ultima.tzinfo is not None:
+                        ultima = ultima.replace(tzinfo=None)
+                    horas_desde = (now - ultima).total_seconds() / 3600
+
+                    if horas_desde > HORAS_RETORNO:
+                        logger.info(f"🧠 Lead {lead.nome} retornou após {horas_desde:.1f}h - saudação personalizada")
+                        nome = lead.nome.split()[0]
+
+                        if lead.qualification_data and lead.qualification_data.maior_desafio and lead.qualification_data.maior_desafio.strip():
+                            desafio = lead.qualification_data.maior_desafio
+                            empresa = lead.empresa or "sua empresa"
+                            greeting = (
+                                f"Oi {nome}! Que bom te ver de volta! 👋\n\n"
+                                f"Da última vez você me contou sobre o desafio de {desafio} na {empresa}.\n\n"
+                                f"Ainda está crítico ou mudou alguma coisa?"
+                            )
+                        else:
+                            greeting = (
+                                f"Oi {nome}! Que bom que voltou! 👋\n\n"
+                                f"Por onde paramos? Me conta o que está pensando."
+                            )
+
+                        messages.append(AIMessage(content=greeting))
+                        state["messages"] = messages
+                        state["lead"] = lead
+                        state["next_action"] = "end"
+                        return state
+
                 # Rotear baseado no status do lead (valores do enum LeadStatus)
                 if current_stage in ["contato_inicial", "qualificando"]:
                     state["next_action"] = "qualify"
@@ -511,54 +549,66 @@ class SmithAgent:
             # System prompt
             system_msg = SystemMessage(content=SYSTEM_PROMPTS["qualificando"])
 
-            # Determinar próximo passo estratégico E RESPOSTA PRÉ-DEFINIDA
-            proximo_passo = None
-            resposta_predefinida = None  # Nova: resposta exata pré-definida
+            # ===== DETECTAR TOM DO LEAD (Feature 4) =====
+            from app.services.tone_detector import detect_tone
+            from app.services.tone_templates import TEMPLATES as TONE_TEMPLATES
+            tone = detect_tone(lead.conversation_history)
+            empresa_nome = lead.empresa or "empresa"
+            nome_primeiro = lead.nome.split()[0] if lead.nome else lead.nome
 
             # ===== USAR TEMPLATES FIXOS (tipo N8N) - SEM LLM =====
-            # IA estava inventando respostas, agora usa TEXTO FIXO
-
+            proximo_passo = None
             fixed_response = None
 
             # CARGO É CRÍTICO (CEO/Dono/Sócio é ICP) - perguntar junto com empresa
             if not lead.qualification_data or not lead.qualification_data.cargo:
                 proximo_passo = "empresa_e_cargo"
-                fixed_response = f"Opa, prazer {lead.nome}! 👋\n\nMe conta, qual é sua empresa e o que você faz lá?"
+                fixed_response = TONE_TEMPLATES["empresa_e_cargo"][tone].format(nome=nome_primeiro)
 
             elif not lead.qualification_data or not lead.qualification_data.funcionarios_atendimento:
                 proximo_passo = "contexto_operacional"
-
-                # Verificar se já tem faturamento para não perguntar de novo
                 ja_tem_faturamento = lead.qualification_data and lead.qualification_data.faturamento_anual
 
                 if ja_tem_faturamento:
-                    # Se JÁ tem faturamento, perguntar SÓ sobre funcionários
-                    fixed_response = f"Entendi! E quantas pessoas você tem na equipe de vendas/atendimento?"
+                    fixed_response = TONE_TEMPLATES["contexto_operacional_so_funcionarios"][tone].format(nome=nome_primeiro)
                 else:
-                    # Se NÃO tem faturamento, perguntar ambos
-                    fixed_response = f"Bacana! Pra eu entender melhor o cenário: quantas pessoas vocês têm na equipe de vendas e qual o faturamento mensal aproximado?"
+                    fixed_response = TONE_TEMPLATES["contexto_operacional_completo"][tone].format(nome=nome_primeiro)
 
             elif not lead.qualification_data or not lead.qualification_data.faturamento_anual:
                 proximo_passo = "faturamento"
-                fixed_response = f"Show! E qual o faturamento mensal de vocês? Isso vai me ajudar a calcular o impacto real que conseguimos gerar."
+                fixed_response = TONE_TEMPLATES["faturamento"][tone].format(nome=nome_primeiro)
 
             elif not lead.qualification_data or lead.qualification_data.is_decision_maker is None:
                 proximo_passo = "decisor"
-                fixed_response = f"Beleza! Você é quem toma as decisões sobre tecnologia e processos na {lead.empresa or 'empresa'}?"
+                fixed_response = TONE_TEMPLATES["decisor"][tone].format(nome=nome_primeiro, empresa=empresa_nome)
 
             elif not lead.qualification_data or not lead.qualification_data.maior_desafio or lead.qualification_data.maior_desafio.strip() == "":
                 proximo_passo = "dor_principal"
-                fixed_response = f"Perfeito! Agora me diz: qual o principal problema que vocês enfrentam hoje? É perda de leads? Atendimento desorganizado? Processos manuais?"
+                # Feature 2: usar insight da pesquisa de empresa se disponível
+                try:
+                    from app.services.empresa_research_service import empresa_research_service
+                    company_insight = empresa_research_service.get_cached_insight(str(lead.id))
+                except Exception:
+                    company_insight = None
+
+                base_template = TONE_TEMPLATES["dor_principal"][tone].format(nome=nome_primeiro)
+                if company_insight:
+                    fixed_response = f"{company_insight}\n\n{base_template}"
+                    logger.info(f"Usando insight da empresa: {company_insight[:60]}...")
+                else:
+                    fixed_response = base_template
 
             elif not lead.qualification_data or not lead.qualification_data.urgency or lead.qualification_data.urgency.strip() == "":
                 proximo_passo = "urgencia"
-                fixed_response = f"Entendi! E quanto ao timing: isso é urgente pra vocês ou dá pra deixar pros próximos meses?"
+                fixed_response = TONE_TEMPLATES["urgencia"][tone].format(nome=nome_primeiro)
 
             else:
-                # LEAD TOTALMENTE QUALIFICADO - OFERECER AGENDAMENTO!
+                # LEAD TOTALMENTE QUALIFICADO - OFERECER AGENDAMENTO COM ROI (Feature 1)
                 proximo_passo = "oferecer_agendamento"
-                logger.info(f"Lead {lead.nome} totalmente qualificado - oferecendo agendamento")
-                fixed_response = f"Perfeito, {lead.nome}! 🎯\n\nBaseado no que você me contou, tenho certeza que consigo te ajudar a resolver isso.\n\nBora marcar uma call de 30min pra eu te mostrar como funciona na prática?"
+                logger.info(f"Lead {lead.nome} totalmente qualificado - oferecendo agendamento com ROI")
+                from app.services.roi_calculator import calcular_roi, formatar_mensagem_roi
+                roi_resultado = calcular_roi(lead.qualification_data)
+                fixed_response = formatar_mensagem_roi(roi_resultado, lead.nome)
 
             # Usar resposta FIXA (sem passar por LLM)
             response = AIMessage(content=fixed_response)
@@ -1027,20 +1077,57 @@ PEÇA NOVAMENTE de forma CLARA e DIRETA (máximo 2 linhas):
                 logger.info(f"Lead {lead.nome} marcado como perdido após 3 follow-ups")
                 return state
 
-            # System prompt
-            system_msg = SystemMessage(content=SYSTEM_PROMPTS["followup"])
+            # ===== FOLLOW-UP PERSONALIZADO COM TEMPLATES FIXOS (Feature 5) =====
+            from app.services.roi_calculator import calcular_roi, formatar_mensagem_roi
 
-            # Contexto do follow-up
-            context = f"""Follow-up #{tentativas + 1} para {lead.nome}.
-Última interação: {lead.ultima_interacao}
-Status atual: {lead.status}
+            nome = lead.nome.split()[0] if lead.nome else lead.nome
+            empresa = lead.empresa or "sua empresa"
+            fixed_followup = None
 
-Seja prestativo e agregue valor."""
+            if tentativas == 0:
+                # 24h: mencionar o desafio específico que o lead contou
+                desafio = (lead.qualification_data.maior_desafio
+                           if lead.qualification_data and lead.qualification_data.maior_desafio
+                           else None)
+                if desafio:
+                    fixed_followup = (
+                        f"E aí, {nome}! Sei que deve tá corrido. 😅\n\n"
+                        f"Fiquei pensando no que você me contou sobre {desafio}. "
+                        f"Isso ainda tá travando vocês?\n\n"
+                        f"Qualquer coisa, me chama!"
+                    )
+                else:
+                    fixed_followup = (
+                        f"E aí, {nome}! Tudo certo? 👋\n\n"
+                        f"Só passando pra ver se ficou alguma dúvida sobre como posso ajudar {empresa}.\n\n"
+                        f"Qualquer coisa, me chama!"
+                    )
 
-            context_msg = SystemMessage(content=context)
+            elif tentativas == 1:
+                # 72h: enviar ROI calculado
+                if lead.qualification_data:
+                    roi = calcular_roi(lead.qualification_data)
+                    roi_msg = formatar_mensagem_roi(roi, nome)
+                    fixed_followup = (
+                        f"Opa, {nome}! Rodei os números aqui:\n\n"
+                        f"{roi_msg}\n\n"
+                        f"Faz sentido falar mais sobre isso?"
+                    )
+                else:
+                    fixed_followup = (
+                        f"Opa, {nome}! Ainda posso te mostrar como funciona na prática.\n\n"
+                        f"Tem 30min essa semana pra uma call rápida?"
+                    )
 
-            # Gerar resposta
-            response = self.llm.invoke([system_msg, context_msg] + list(messages))
+            elif tentativas == 2:
+                # 7 dias: última mensagem, tom descontraído
+                fixed_followup = (
+                    f"Fala, {nome}! Última mensagem pra não encher o saco 😅\n\n"
+                    f"Se um dia fizer sentido resolver o atendimento da {empresa}, estarei por aqui.\n\n"
+                    f"Sucesso! 🚀"
+                )
+
+            response = AIMessage(content=fixed_followup)
 
             # Atualizar estado
             messages.append(response)

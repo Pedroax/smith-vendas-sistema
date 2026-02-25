@@ -81,6 +81,10 @@ class Settings(BaseSettings):
         env="CORS_ORIGINS"
     )
 
+    # Gemini (Google AI) - para pesquisa de empresas
+    gemini_api_key: Optional[str] = Field(default=None, env="GEMINI_API_KEY")
+    gemini_model: str = Field(default="gemini-2.0-flash", env="GEMINI_MODEL")
+
     # Facebook Lead Ads
     facebook_verify_token: str = Field(default="smith_webhook_2026", env="FACEBOOK_VERIFY_TOKEN")
     facebook_app_secret: str = Field(default="", env="FACEBOOK_APP_SECRET")

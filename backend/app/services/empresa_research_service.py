@@ -1,0 +1,219 @@
+"""
+Serviço de pesquisa de empresas para o SDR Smith.
+Usa website_research_service para scraping + Gemini 2.0 Flash para gerar insights.
+Roda em background sem bloquear o fluxo principal.
+"""
+
+import asyncio
+from datetime import datetime, timedelta
+from typing import Optional, Dict
+from loguru import logger
+
+from app.config import settings
+from app.services.website_research_service import WebsiteResearchService
+
+
+class EmpresaResearchService:
+    """
+    Pesquisa informações sobre a empresa do lead.
+    Usa scraping do site + Gemini 2.0 Flash para gerar 1 insight de vendas.
+    Cache em memória com TTL de 24h.
+    """
+
+    def __init__(self):
+        self.website_research = WebsiteResearchService()
+        # Cache: {lead_id: {"insight": str, "timestamp": datetime, "empresa": str}}
+        self._cache: Dict[str, dict] = {}
+        self._gemini_model = None
+
+    def _init_gemini(self):
+        """Inicializa Gemini lazily - apenas se GEMINI_API_KEY estiver configurada"""
+        if self._gemini_model:
+            return self._gemini_model
+
+        if not settings.gemini_api_key:
+            logger.debug("GEMINI_API_KEY não configurada - pesquisa de empresa desabilitada")
+            return None
+
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=settings.gemini_api_key)
+            self._gemini_model = genai.GenerativeModel(settings.gemini_model)
+            logger.info(f"Gemini {settings.gemini_model} inicializado para pesquisa de empresas")
+            return self._gemini_model
+        except ImportError:
+            logger.warning("google-generativeai não instalado. Execute: pip install google-generativeai")
+            return None
+        except Exception as e:
+            logger.error(f"Erro ao inicializar Gemini: {e}")
+            return None
+
+    def detect_trigger(self, lead, message: str):
+        """
+        Detecta se deve rodar pesquisa de empresa.
+
+        Triggers:
+        - Mensagem contém URL
+        - Lead tem empresa preenchida mas ainda não foi pesquisado
+
+        Retorna: (deve_pesquisar, url_ou_none)
+        """
+        # Se já tem insight em cache recente (< 24h), não pesquisar de novo
+        cached = self._cache.get(str(lead.id))
+        if cached:
+            age = datetime.now() - cached["timestamp"]
+            if age < timedelta(hours=24):
+                return False, None
+
+        # Verificar se mensagem tem URL
+        url = self.website_research.extract_url(message)
+        if url:
+            logger.info(f"🔗 URL detectada na mensagem: {url}")
+            return True, url
+
+        # Se lead tem empresa mas nunca foi pesquisado - não faz nada ainda
+        # (só pesquisamos quando temos URL ou site explícito)
+        return False, None
+
+    def _generate_insight_with_gemini(
+        self,
+        company_name: str,
+        website_content: str
+    ) -> Optional[str]:
+        """
+        Usa Gemini 2.0 Flash para gerar 1 insight de vendas baseado no site da empresa.
+        """
+        model = self._init_gemini()
+        if not model:
+            return None
+
+        try:
+            prompt = f"""Você é um assistente de vendas da AutomateX, empresa que vende automação de atendimento e vendas via WhatsApp/IA.
+
+EMPRESA: {company_name}
+
+CONTEÚDO DO SITE:
+{website_content[:2000]}
+
+Analise o site e gere APENAS 1 frase de insight para usar naturalmente em conversa de vendas pelo WhatsApp.
+
+REGRAS:
+- Máximo 2 linhas
+- Tom conversacional, não formal
+- Conectar o que a empresa faz com o problema que a AutomateX resolve (atendimento lento, perda de leads, processos manuais)
+- Não inventar dados que não estão no site
+- Começar com "Vi que" ou "Percebi que"
+
+EXEMPLOS:
+- "Vi que a {company_name} atende clientes B2B — empresas assim costumam perder leads por demora no primeiro contato."
+- "Percebi que vocês têm várias linhas de produto — isso deve gerar muito volume de dúvidas repetidas no atendimento."
+- "Vi que a {company_name} está crescendo bastante — times em expansão geralmente sofrem com atendimento desorganizado."
+
+Responda APENAS com a frase, sem explicações."""
+
+            response = model.generate_content(prompt)
+            insight = response.text.strip()
+
+            if insight and len(insight) > 10:
+                logger.info(f"Gemini gerou insight: {insight[:80]}...")
+                return insight
+
+        except Exception as e:
+            logger.error(f"Erro ao gerar insight com Gemini: {e}")
+
+        return None
+
+    async def research_empresa(
+        self,
+        lead,
+        url: Optional[str] = None
+    ) -> Optional[str]:
+        """
+        Pesquisa empresa e retorna 1 insight de vendas.
+
+        Fluxo:
+        1. Scraping do site com website_research_service
+        2. Gemini analisa e gera insight
+        3. Fallback: usa insight do GPT do website_research_service
+        """
+        if not url:
+            return None
+
+        try:
+            empresa_nome = lead.empresa or self.website_research.extract_company_name(url)
+
+            logger.info(f"Pesquisando empresa {empresa_nome} em {url}")
+
+            # 1. Scraping do site
+            content = await self.website_research.fetch_website_content(url)
+
+            if not content:
+                logger.warning(f"Não foi possível acessar {url}")
+                return None
+
+            # 2. Tentar com Gemini primeiro
+            insight = None
+            gemini_model = self._init_gemini()
+
+            if gemini_model:
+                # Gemini é síncrono, rodar em thread para não bloquear
+                insight = await asyncio.to_thread(
+                    self._generate_insight_with_gemini,
+                    empresa_nome,
+                    content
+                )
+
+            # 3. Fallback: usar análise GPT do website_research_service
+            if not insight:
+                logger.info("Fallback: usando análise GPT do website_research_service")
+                analysis = await self.website_research.analyze_with_gpt(empresa_nome, content)
+                if analysis and analysis.get("insights"):
+                    insight = analysis["insights"][0]
+
+            return insight
+
+        except Exception as e:
+            logger.error(f"Erro ao pesquisar empresa: {e}")
+            return None
+
+    def get_cached_insight(self, lead_id) -> Optional[str]:
+        """Retorna insight do cache se existir e for recente (< 24h)"""
+        cached = self._cache.get(str(lead_id))
+        if not cached:
+            return None
+
+        age = datetime.now() - cached["timestamp"]
+        if age > timedelta(hours=24):
+            del self._cache[str(lead_id)]
+            return None
+
+        return cached.get("insight")
+
+    async def run_background_research(self, lead, message: str):
+        """
+        Entry point para rodar em background.
+        Detecta trigger, pesquisa empresa, salva no cache.
+        Não bloqueia o fluxo principal.
+        """
+        try:
+            deve_pesquisar, url = self.detect_trigger(lead, message)
+
+            if not deve_pesquisar:
+                return
+
+            insight = await self.research_empresa(lead, url=url)
+
+            if insight:
+                self._cache[str(lead.id)] = {
+                    "insight": insight,
+                    "timestamp": datetime.now(),
+                    "empresa": lead.empresa or ""
+                }
+                logger.success(f"Insight salvo para lead {lead.id}: {insight[:60]}...")
+
+        except Exception as e:
+            logger.error(f"Erro na pesquisa background de empresa: {e}")
+
+
+# Instância global (singleton)
+empresa_research_service = EmpresaResearchService()

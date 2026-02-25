@@ -184,6 +184,15 @@ async def process_buffered_message(phone: str, combined_message: str, push_name:
         lead.conversation_history.append(user_message)
         lead.ultima_interacao = datetime.now()
 
+        # 🔍 PESQUISA DE EMPRESA EM BACKGROUND (Feature 2 - não bloqueia)
+        try:
+            from app.services.empresa_research_service import empresa_research_service
+            asyncio.create_task(
+                empresa_research_service.run_background_research(lead, combined_message)
+            )
+        except Exception as research_err:
+            logger.debug(f"Pesquisa background ignorada: {research_err}")
+
         # 🤖 PROCESSAR COM O AGENTE SMITH (LangGraph)
         response_text, show_calendar = await process_with_agent(lead, combined_message)
 

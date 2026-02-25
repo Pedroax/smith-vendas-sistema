@@ -229,6 +229,65 @@ Responda APENAS com a mensagem, sem explicações."""
 
         return None
 
+    async def _generate_plano_com_openai(
+        self,
+        company_name: str,
+        lead_nome: str,
+        website_content: str
+    ) -> Optional[str]:
+        """
+        Fallback usando OpenAI GPT-4o para gerar plano personalizado.
+        Sempre disponível quando Gemini não estiver configurado.
+        """
+        try:
+            from langchain_openai import ChatOpenAI
+            from langchain_core.messages import SystemMessage
+            from app.config import settings
+
+            llm = ChatOpenAI(
+                model=settings.openai_model,
+                temperature=0.3,
+                api_key=settings.openai_api_key,
+                request_timeout=20
+            )
+
+            prompt = f"""Você é Smith, consultor da AutomateX que vende automação de atendimento e vendas via IA.
+Você acabou de analisar o site da empresa de {lead_nome}.
+
+EMPRESA: {company_name}
+
+CONTEÚDO DO SITE:
+{website_content[:3000]}
+
+Gere uma mensagem para WhatsApp que mostre que você REALMENTE analisou o site e entende o negócio deles.
+
+A mensagem deve:
+1. Mencionar 2-3 detalhes ESPECÍFICOS encontrados no site (produtos, serviços, segmento, público-alvo)
+2. Identificar onde há oportunidade de automação/IA no atendimento deles baseado no que você viu
+3. Ser específico sobre o que a AutomateX faria na prática para essa empresa
+4. Terminar com convite para call de 30min
+
+REGRAS:
+- Máximo 6-7 linhas
+- WhatsApp casual mas profissional
+- NUNCA use "chatbot", "robô" ou "bot" — use "IA de atendimento" ou "agente inteligente"
+- Mencione detalhes REAIS do site — não invente nada
+- Tom de consultor que entende o negócio, não de vendedor
+
+Responda APENAS com a mensagem, sem explicações."""
+
+            response = await llm.ainvoke([SystemMessage(content=prompt)])
+            result = response.content.strip()
+
+            if result and len(result) > 50:
+                logger.success(f"Plano gerado com OpenAI para {company_name}: {result[:80]}...")
+                return result
+
+        except Exception as e:
+            logger.error(f"Erro ao gerar plano com OpenAI: {e}")
+
+        return None
+
     async def research_empresa_com_plano(
         self,
         lead,
@@ -237,7 +296,7 @@ Responda APENAS com a mensagem, sem explicações."""
         """
         Pesquisa completa e síncrona do site da empresa.
         Retorna análise personalizada para usar como resposta imediata.
-        Chamada quando lead envia URL durante conversa.
+        Tenta Gemini primeiro, fallback para OpenAI (sempre disponível).
         """
         try:
             empresa_nome = lead.empresa or self.website_research.extract_company_name(url)
@@ -247,10 +306,14 @@ Responda APENAS com a mensagem, sem explicações."""
 
             content = await self.website_research.fetch_website_content(url)
             if not content:
-                logger.warning(f"Não foi possível acessar {url}")
+                logger.warning(f"Não foi possível acessar {url} — site bloqueou ou está offline")
                 return None
 
-            # Gerar plano personalizado com Gemini
+            logger.info(f"✅ Site acessado ({len(content)} chars) — gerando análise personalizada")
+
+            plano = None
+
+            # 1. Tentar Gemini (se disponível)
             gemini_model = self._init_gemini()
             if gemini_model:
                 plano = await asyncio.to_thread(
@@ -260,18 +323,21 @@ Responda APENAS com a mensagem, sem explicações."""
                     content
                 )
 
-                if plano:
-                    # Salvar no cache (insight curto + plano completo)
-                    self._cache[str(lead.id)] = {
-                        "insight": plano[:120],
-                        "full_analysis": plano,
-                        "timestamp": datetime.now(),
-                        "empresa": empresa_nome
-                    }
-                    return plano
+            # 2. Fallback para OpenAI (sempre disponível)
+            if not plano:
+                logger.info("Usando OpenAI para gerar plano personalizado")
+                plano = await self._generate_plano_com_openai(empresa_nome, lead_nome, content)
 
-            # Fallback sem Gemini
-            logger.info("Gemini não disponível para plano personalizado")
+            if plano:
+                self._cache[str(lead.id)] = {
+                    "insight": plano[:120],
+                    "full_analysis": plano,
+                    "timestamp": datetime.now(),
+                    "empresa": empresa_nome
+                }
+                return plano
+
+            logger.warning("Não foi possível gerar análise personalizada")
             return None
 
         except Exception as e:

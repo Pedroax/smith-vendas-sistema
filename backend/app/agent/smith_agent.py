@@ -2,6 +2,7 @@
 Smith 2.0 - Agente SDR Inteligente
 State Machine LangGraph para qualificação e agendamento de leads
 """
+import re
 from typing import TypedDict, Annotated, Sequence, Optional, Any
 from langgraph.graph import StateGraph, END
 from langchain_openai import ChatOpenAI
@@ -432,6 +433,65 @@ class SmithAgent:
             logger.error(f"Erro no handle_new_lead: {e}")
             return state
 
+    def _build_qualification_prompt(self, lead, proximo_passo: str, ultima_mensagem: str, company_insight: str = None) -> str:
+        """
+        Prompt dinâmico para qualificação natural.
+        Diz exatamente o que o LLM deve perguntar, mas deixa ele responder de forma humana.
+        """
+        # Contexto: o que já foi coletado
+        coletado = []
+        if lead.nome and lead.nome != "Lead":
+            coletado.append(f"nome: {lead.nome}")
+        if lead.empresa:
+            coletado.append(f"empresa: {lead.empresa}")
+        if lead.qualification_data:
+            qd = lead.qualification_data
+            if qd.cargo: coletado.append(f"cargo: {qd.cargo}")
+            if qd.funcionarios_atendimento: coletado.append(f"equipe: {qd.funcionarios_atendimento} pessoas")
+            if qd.faturamento_anual:
+                fat_mensal = qd.faturamento_anual / 12
+                coletado.append(f"faturamento: ~R${fat_mensal:,.0f}/mês")
+            if qd.is_decision_maker is not None:
+                coletado.append(f"é decisor: {'sim' if qd.is_decision_maker else 'não'}")
+            if qd.maior_desafio: coletado.append(f"desafio principal: {qd.maior_desafio}")
+            if qd.urgency: coletado.append(f"urgência: {qd.urgency}")
+
+        contexto_str = "\n".join(f"  - {c}" for c in coletado) if coletado else "  - (nenhum dado coletado ainda)"
+
+        instrucoes = {
+            "empresa_e_cargo": "Pergunte em qual empresa ele trabalha e qual é o cargo/função. Pode fazer as duas na mesma mensagem.",
+            "contexto_operacional_completo": "Pergunte quantas pessoas tem no time de atendimento/vendas E qual é o faturamento mensal aproximado. Mostre que isso vai te ajudar a calcular o impacto real.",
+            "contexto_operacional_funcionarios": "Pergunte quantas pessoas tem no time de atendimento/vendas.",
+            "faturamento": "Pergunte o faturamento mensal aproximado. Deixa claro que é pra calcular o impacto.",
+            "decisor": "Pergunte diretamente se ele é quem decide sobre tecnologia/ferramentas na empresa.",
+            "dor_principal": "Pergunte qual é o maior problema/gargalo que a empresa tem hoje — perda de leads, atendimento lento, processos manuais, etc.",
+            "urgencia": "Pergunte qual é o timing — precisa resolver isso logo ou dá pra planejar pra daqui uns meses?"
+        }
+
+        instrucao = instrucoes.get(proximo_passo, "Continue a conversa naturalmente.")
+
+        insight_str = ""
+        if company_insight:
+            insight_str = f"\nINSIGHT DA EMPRESA (use se for natural): {company_insight}"
+
+        return f"""Você é Smith, consultor da AutomateX que vende automação de atendimento e vendas via IA.
+Tom: consultor real no WhatsApp — humano, direto, sem enrolação.
+
+DADOS DO LEAD ATÉ AGORA:
+{contexto_str}{insight_str}
+
+ÚLTIMA MENSAGEM DELE: "{ultima_mensagem}"
+
+SUA TAREFA: {instrucao}
+
+REGRAS CRÍTICAS:
+- Máximo 3-4 linhas no total
+- Reaja ao que ele disse — mencione algo ESPECÍFICO do que falou (nada de "ótimo!" ou "perfeito!" genérico)
+- Faça UMA única pergunta — não várias ao mesmo tempo
+- Se ele fizer uma pergunta ou desviar do assunto, responda brevemente e conduza de volta
+- Zero bullet points, zero listas numeradas
+- Tom de consultor que entende o negócio, não de chatbot preenchendo formulário"""
+
     def qualify_lead(self, state: AgentState) -> AgentState:
         """Node: Qualificar lead com perguntas BANT"""
         try:
@@ -449,12 +509,15 @@ class SmithAgent:
                         if count >= 2:
                             break
 
-            # Palavras que indicam aceitação de agendamento
-            aceita_agendar_keywords = ["sim", "pode", "vamos", "aceito", "quero", "podemos", "ok", "beleza", "perfeito", "ótimo", "confirmo", "agenda", "marcar", "próxima", "semana", "agendar", "reunião", "conversar"]
+            # Palavras que indicam aceitação de agendamento (word boundaries para evitar falsos positivos)
+            # Ex: "poderia" não deve ser detectado como "pode", "sim" não deve pegar "assim"
+            aceita_agendar_keywords = ["sim", "pode", "vamos", "aceito", "quero", "ok", "beleza",
+                                       "confirmo", "agenda", "marcar", "agendar", "combina",
+                                       "feito", "bora", "vou", "quero sim", "pode ser"]
 
-            # Verificar se ACEITOU em qualquer das últimas mensagens
+            # Verificar se ACEITOU com word boundary (evita substring como "poderia" → "pode")
             aceitou_agendar = any(
-                any(keyword in msg for keyword in aceita_agendar_keywords)
+                any(re.search(r'\b' + re.escape(kw) + r'\b', msg, re.IGNORECASE) for kw in aceita_agendar_keywords)
                 for msg in last_messages
             )
 
@@ -593,80 +656,56 @@ class SmithAgent:
                 state["next_action"] = "end"
                 return state
 
-            # System prompt
-            system_msg = SystemMessage(content=SYSTEM_PROMPTS["qualificando"])
+            # ===== DETERMINAR PRÓXIMO PASSO =====
+            empresa_nome = lead.empresa or "sua empresa"
 
-            # ===== DETECTAR TOM DO LEAD (Feature 4) =====
-            from app.services.tone_detector import detect_tone
-            from app.services.tone_templates import TEMPLATES as TONE_TEMPLATES
-            tone = detect_tone(lead.conversation_history)
-            empresa_nome = lead.empresa or "empresa"
-            nome_primeiro = lead.nome.split()[0] if lead.nome else lead.nome
-
-            # Variáveis de contexto para templates mais personalizados
-            cargo_str = (lead.qualification_data.cargo if lead.qualification_data and lead.qualification_data.cargo else "gestor")
-            funcionarios_str = (str(lead.qualification_data.funcionarios_atendimento) if lead.qualification_data and lead.qualification_data.funcionarios_atendimento else "seu time")
-
-            # ===== USAR TEMPLATES FIXOS (tipo N8N) - SEM LLM =====
-            proximo_passo = None
-            fixed_response = None
-
-            # CARGO É CRÍTICO (CEO/Dono/Sócio é ICP) - perguntar junto com empresa
             if not lead.qualification_data or not lead.qualification_data.cargo:
                 proximo_passo = "empresa_e_cargo"
-                fixed_response = TONE_TEMPLATES["empresa_e_cargo"][tone].format(nome=nome_primeiro)
-
-            elif not lead.qualification_data or not lead.qualification_data.funcionarios_atendimento:
-                proximo_passo = "contexto_operacional"
-                ja_tem_faturamento = lead.qualification_data and lead.qualification_data.faturamento_anual
-
-                if ja_tem_faturamento:
-                    fixed_response = TONE_TEMPLATES["contexto_operacional_so_funcionarios"][tone].format(nome=nome_primeiro)
-                else:
-                    fixed_response = TONE_TEMPLATES["contexto_operacional_completo"][tone].format(
-                        nome=nome_primeiro, cargo=cargo_str, empresa=empresa_nome
-                    )
-
-            elif not lead.qualification_data or not lead.qualification_data.faturamento_anual:
+            elif not lead.qualification_data.funcionarios_atendimento:
+                ja_tem_faturamento = bool(lead.qualification_data.faturamento_anual)
+                proximo_passo = "contexto_operacional_completo" if not ja_tem_faturamento else "contexto_operacional_funcionarios"
+            elif not lead.qualification_data.faturamento_anual:
                 proximo_passo = "faturamento"
-                fixed_response = TONE_TEMPLATES["faturamento"][tone].format(nome=nome_primeiro, empresa=empresa_nome)
-
-            elif not lead.qualification_data or lead.qualification_data.is_decision_maker is None:
+            elif lead.qualification_data.is_decision_maker is None:
                 proximo_passo = "decisor"
-                fixed_response = TONE_TEMPLATES["decisor"][tone].format(nome=nome_primeiro, empresa=empresa_nome)
-
-            elif not lead.qualification_data or not lead.qualification_data.maior_desafio or lead.qualification_data.maior_desafio.strip() == "":
+            elif not lead.qualification_data.maior_desafio or lead.qualification_data.maior_desafio.strip() == "":
                 proximo_passo = "dor_principal"
-                # Feature 2: usar insight da pesquisa de empresa se disponível
-                try:
-                    from app.services.empresa_research_service import empresa_research_service
-                    company_insight = empresa_research_service.get_cached_insight(str(lead.id))
-                except Exception:
-                    company_insight = None
-
-                base_template = TONE_TEMPLATES["dor_principal"][tone].format(
-                    nome=nome_primeiro, empresa=empresa_nome, funcionarios=funcionarios_str
-                )
-                if company_insight:
-                    fixed_response = f"{company_insight}\n\n{base_template}"
-                    logger.info(f"Usando insight da empresa: {company_insight[:60]}...")
-                else:
-                    fixed_response = base_template
-
-            elif not lead.qualification_data or not lead.qualification_data.urgency or lead.qualification_data.urgency.strip() == "":
+            elif not lead.qualification_data.urgency or lead.qualification_data.urgency.strip() == "":
                 proximo_passo = "urgencia"
-                fixed_response = TONE_TEMPLATES["urgencia"][tone].format(nome=nome_primeiro)
-
             else:
-                # LEAD TOTALMENTE QUALIFICADO - OFERECER AGENDAMENTO COM ROI (Feature 1)
                 proximo_passo = "oferecer_agendamento"
+
+            logger.info(f"🎯 Próximo passo: {proximo_passo}")
+
+            # ===== OFERECER AGENDAMENTO COM ROI (mensagem controlada, não LLM) =====
+            if proximo_passo == "oferecer_agendamento":
                 logger.info(f"Lead {lead.nome} totalmente qualificado - oferecendo agendamento com ROI")
                 from app.services.roi_calculator import calcular_roi, formatar_mensagem_roi
                 roi_resultado = calcular_roi(lead.qualification_data)
-                fixed_response = formatar_mensagem_roi(roi_resultado, lead.nome, empresa_nome)
+                response = AIMessage(content=formatar_mensagem_roi(roi_resultado, lead.nome, empresa_nome))
 
-            # Usar resposta FIXA (sem passar por LLM)
-            response = AIMessage(content=fixed_response)
+            else:
+                # ===== LLM COM PROMPT FOCADO - Conversa natural + pergunta específica =====
+                # Pegar última mensagem do usuário para contextualizar
+                ultima_msg = ""
+                for msg in reversed(messages):
+                    if isinstance(msg, HumanMessage):
+                        ultima_msg = msg.content
+                        break
+
+                # Feature 2: company insight para dor_principal
+                company_insight = None
+                if proximo_passo == "dor_principal":
+                    try:
+                        from app.services.empresa_research_service import empresa_research_service
+                        company_insight = empresa_research_service.get_cached_insight(str(lead.id))
+                        if company_insight:
+                            logger.info(f"Usando insight da empresa: {company_insight[:60]}...")
+                    except Exception:
+                        pass
+
+                qualify_prompt = self._build_qualification_prompt(lead, proximo_passo, ultima_msg, company_insight)
+                response = self.llm.invoke([SystemMessage(content=qualify_prompt)] + list(messages))
 
             # Atualizar estado
             messages.append(response)

@@ -191,31 +191,30 @@ Responda APENAS com a frase, sem explicações."""
             return None
 
         try:
-            prompt = f"""Você é Smith, consultor da AutomateX que vende automação de atendimento e vendas via IA.
-Você acabou de analisar o site da empresa de {lead_nome}.
+            prompt = f"""Você é Smith, consultor sênior da AutomateX — automação de atendimento e vendas via IA.
+Você analisou o site da empresa de {lead_nome} e vai dar um diagnóstico direto.
 
 EMPRESA: {company_name}
 
 CONTEÚDO DO SITE:
 {website_content[:3000]}
 
-Gere uma resposta para WhatsApp que mostre que você REALMENTE analisou o site e entende o negócio deles.
+Escreva uma mensagem de WhatsApp com o seguinte FORMATO OBRIGATÓRIO (4 parágrafos curtos):
 
-A mensagem deve:
-1. Mencionar 2-3 detalhes ESPECÍFICOS que você encontrou no site (produtos, serviços, segmento, público)
-2. Identificar onde há oportunidade clara de automação/IA no atendimento deles (baseado no que você viu)
-3. Ser específico sobre o que a AutomateX faria na prática para essa empresa
-4. Terminar com convite para call de 30min
+1. [Diagnóstico] — 1 frase dizendo o que você viu no site (produto/serviço específico + segmento)
+2. [Problema] — 1-2 frases afirmando (não perguntando) qual é o gargalo de atendimento típico desse segmento. Use tom de quem já viu isso 100x.
+3. [Solução] — 1-2 frases dizendo O QUE a AutomateX implementa na prática para esse tipo de empresa (específico, não genérico)
+4. [CTA] — Convite direto para call de 30min. Assumir que vai acontecer. Ex: "Tenho horário essa semana — quando fica bom?"
 
-REGRAS:
-- Máximo 6-7 linhas
-- WhatsApp casual mas profissional
-- NUNCA use as palavras "chatbot", "robô" ou "bot" — use "IA de atendimento" ou "agente inteligente"
-- Mencione detalhes REAIS do site — não invente
-- Seja específico, não genérico
-- Tom de consultor que entende o negócio deles, não de vendedor
+TOM OBRIGATÓRIO:
+- Direto e firme, como um consultor que sabe o que está falando
+- PROIBIDO: "Acredito que", "poderia ajudar", "talvez", "Que tal?", "Oi, tudo bem?"
+- PROIBIDO: "chatbot", "robô", "bot" — use "agente inteligente" ou "IA de atendimento"
+- PROIBIDO: frases genéricas que servem para qualquer empresa
+- Use afirmações, não sugestões: "resolve", "elimina", "implementamos", não "poderia resolver"
+- Mencione detalhes REAIS do site
 
-Responda APENAS com a mensagem, sem explicações."""
+Responda APENAS com a mensagem final, sem título ou explicações."""
 
             response = model.generate_content(prompt)
             plano = response.text.strip()
@@ -251,30 +250,30 @@ Responda APENAS com a mensagem, sem explicações."""
                 request_timeout=20
             )
 
-            prompt = f"""Você é Smith, consultor da AutomateX que vende automação de atendimento e vendas via IA.
-Você acabou de analisar o site da empresa de {lead_nome}.
+            prompt = f"""Você é Smith, consultor sênior da AutomateX — automação de atendimento e vendas via IA.
+Você analisou o site da empresa de {lead_nome} e vai dar um diagnóstico direto.
 
 EMPRESA: {company_name}
 
 CONTEÚDO DO SITE:
 {website_content[:3000]}
 
-Gere uma mensagem para WhatsApp que mostre que você REALMENTE analisou o site e entende o negócio deles.
+Escreva uma mensagem de WhatsApp com o seguinte FORMATO OBRIGATÓRIO (4 parágrafos curtos):
 
-A mensagem deve:
-1. Mencionar 2-3 detalhes ESPECÍFICOS encontrados no site (produtos, serviços, segmento, público-alvo)
-2. Identificar onde há oportunidade de automação/IA no atendimento deles baseado no que você viu
-3. Ser específico sobre o que a AutomateX faria na prática para essa empresa
-4. Terminar com convite para call de 30min
+1. [Diagnóstico] — 1 frase dizendo o que você viu no site (produto/serviço específico + segmento)
+2. [Problema] — 1-2 frases afirmando (não perguntando) qual é o gargalo de atendimento típico desse segmento. Use tom de quem já viu isso 100x.
+3. [Solução] — 1-2 frases dizendo O QUE a AutomateX implementa na prática para esse tipo de empresa (específico, não genérico)
+4. [CTA] — Convite direto para call de 30min. Assumir que vai acontecer. Ex: "Tenho horário essa semana — quando fica bom?"
 
-REGRAS:
-- Máximo 6-7 linhas
-- WhatsApp casual mas profissional
-- NUNCA use "chatbot", "robô" ou "bot" — use "IA de atendimento" ou "agente inteligente"
-- Mencione detalhes REAIS do site — não invente nada
-- Tom de consultor que entende o negócio, não de vendedor
+TOM OBRIGATÓRIO:
+- Direto e firme, como um consultor que sabe o que está falando
+- PROIBIDO: "Acredito que", "poderia ajudar", "talvez", "Que tal?", "Oi, tudo bem?"
+- PROIBIDO: "chatbot", "robô", "bot" — use "agente inteligente" ou "IA de atendimento"
+- PROIBIDO: frases genéricas que servem para qualquer empresa
+- Use afirmações, não sugestões: "resolve", "elimina", "implementamos", não "poderia resolver"
+- Mencione detalhes REAIS do site
 
-Responda APENAS com a mensagem, sem explicações."""
+Responda APENAS com a mensagem final, sem título ou explicações."""
 
             response = await llm.ainvoke([SystemMessage(content=prompt)])
             result = response.content.strip()
@@ -309,28 +308,28 @@ Responda APENAS com a mensagem, sem explicações."""
                 request_timeout=20
             )
 
-            prompt = f"""Você é Smith, consultor da AutomateX que vende automação de atendimento e vendas via IA.
+            prompt = f"""Você é Smith, consultor sênior da AutomateX — automação de atendimento e vendas via IA.
 
 EMPRESA: {company_name}
 URL: {url}
 
-Você não conseguiu acessar o site, mas pelo nome da empresa e URL consegue inferir o segmento.
+Pelo nome da empresa e URL, infira o segmento e escreva uma mensagem de diagnóstico direto para WhatsApp.
 
-Gere uma mensagem de WhatsApp que:
-1. Mostre que você pesquisou a empresa (mesmo sem acesso ao site)
-2. Faça uma pergunta inteligente sobre o negócio deles baseada no que o nome/URL sugere
-3. Conecte com uma oportunidade de automação no atendimento
-4. Convide para call de 30min
+FORMATO OBRIGATÓRIO (4 parágrafos curtos):
+1. [Diagnóstico] — O que você entendeu sobre o negócio deles pelo nome/URL (segmento, tipo de produto/serviço)
+2. [Problema] — Afirme (não pergunte) qual é o gargalo típico de atendimento nesse segmento. Tom de quem já viu isso 100x.
+3. [Solução] — O que a AutomateX implementa na prática para esse tipo de empresa (específico)
+4. [CTA] — Convite direto para call de 30min. Assumir que vai acontecer.
 
-REGRAS:
-- Máximo 5-6 linhas
-- WhatsApp casual mas profissional
-- NUNCA use "chatbot", "robô" ou "bot" — use "IA de atendimento" ou "agente inteligente"
-- NÃO invente dados específicos que você não sabe
-- Seja honesto mas curioso: "Pesquisei sobre a {company_name}..."
-- Tom de consultor interessado, não de vendedor
+TOM OBRIGATÓRIO:
+- Direto e firme, como consultor que sabe o que está falando
+- PROIBIDO: "Acredito que", "poderia ajudar", "talvez", "Que tal?", "Oi, tudo bem?"
+- PROIBIDO: "chatbot", "robô", "bot" — use "agente inteligente" ou "IA de atendimento"
+- PROIBIDO: frases genéricas que servem para qualquer empresa
+- Use afirmações: "resolve", "elimina", "implementamos" — não "poderia resolver"
+- Se não souber algo específico, use o que você SABE sobre o segmento inferido
 
-Responda APENAS com a mensagem."""
+Responda APENAS com a mensagem final, sem título ou explicações."""
 
             response = await llm.ainvoke([SystemMessage(content=prompt)])
             result = response.content.strip()

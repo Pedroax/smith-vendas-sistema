@@ -487,7 +487,7 @@ SOBRE A AUTOMTEX (use quando o lead perguntar):
 - Nosso carro-chefe é automação de atendimento e vendas via WhatsApp/IA
 - Temos o ecossistema AURA, feito para clínicas: IA de ligação + IA de atendimento + CRM + dashboard + gestão + app completo
 - Para outros segmentos criamos soluções customizadas com o mesmo nível de sofisticação
-- Investimento: setup a partir de R$5.000. A recorrência varia conforme o escopo e é definida na proposta — NUNCA invente valor de mensalidade, diga que isso é personalizado e discutido na call
+- Investimento: setup a partir de R$5.000. PONTO FINAL. Não existe "pacote de R$2.500/mês" nem nenhum outro valor fixo de mensalidade — PROIBIDO citar qualquer valor mensal. Se o lead perguntar preço, diga EXATAMENTE: "O setup começa em R$5.000. A mensalidade depende do escopo — por isso a call existe, pra eu montar a proposta certa pra vocês."
 - Não vendemos "chatbot básico" — são agentes inteligentes que entendem contexto, qualificam leads, agendam, seguem up e integram com sistemas existentes
 - Prazo médio de implementação: 2 a 4 semanas
 

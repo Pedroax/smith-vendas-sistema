@@ -99,16 +99,18 @@ def formatar_mensagem_roi(resultado: dict, lead_nome: str, empresa_nome: str = N
 
     if funcionarios:
         return (
-            f"Rodei os números aqui, {nome} 🧮\n\n"
-            f"Com {funcionarios} pessoas no time automatizando tarefas repetitivas, "
-            f"a estimativa é de ~{valor_fmt}/mês em horas recuperadas — "
-            f"só isso já paga o investimento em 1-2 meses.\n\n"
-            f"Vale uma call de 30min pra eu mostrar como implementar isso na {empresa}?"
+            f"Com {funcionarios} pessoas no time, tem leads que somem sem resposta toda semana — "
+            f"horário errado, pico de volume, alguém de folga.\n\n"
+            f"Automatizando o atendimento da {empresa}, você garante que 100% dos contatos "
+            f"recebem resposta na hora, 24h por dia. Na prática: mais contratos fechados "
+            f"com o mesmo time, sem contratar mais ninguém.\n\n"
+            f"Vale uma call de 30min pra eu te mostrar como funciona na prática?"
         )
     else:
         return (
-            f"Rodei os números aqui, {nome} 🧮\n\n"
-            f"Com o faturamento de vocês, só recuperando os leads que se perdem "
-            f"por atendimento lento, estamos falando de ~{valor_fmt}/mês.\n\n"
-            f"Vale uma call de 30min pra eu mostrar como isso funciona na {empresa}?"
+            f"Com o volume que a {empresa} movimenta, cada lead que some por demora "
+            f"no atendimento é contrato que vai pro concorrente.\n\n"
+            f"Automatizando, você garante resposta imediata pra todos os contatos, 24/7 — "
+            f"e converte muito mais sem precisar aumentar o time.\n\n"
+            f"Vale uma call de 30min pra eu te mostrar como funciona na prática?"
         )

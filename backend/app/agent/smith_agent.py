@@ -743,9 +743,17 @@ REGRAS CRÍTICAS:
 
                         try:
                             with _TPE(max_workers=1) as _ex:
-                                site_insight = _ex.submit(_run).result(timeout=15)
+                                site_insight = _ex.submit(_run).result(timeout=20)
                         except Exception as _te:
                             logger.warning(f"Timeout/erro ao gerar insight do site: {_te}")
+
+                        # Salvar no cache para evitar regerar depois
+                        if site_insight:
+                            empresa_research_service._cache[str(lead.id)] = {
+                                "insight": site_insight,
+                                "timestamp": __import__("datetime").datetime.now(),
+                                "empresa": lead.empresa or "",
+                            }
 
                     if site_insight:
                         logger.info(f"Usando insight do site na oferta de ROI: {site_insight[:60]}...")
@@ -765,16 +773,17 @@ DADOS DO LEAD:
 - ROI calculado: {roi_base}
 
 Escreva uma mensagem WhatsApp que:
-1. Menciona em 1 frase o que você viu no site deles (mostre que fez o dever de casa)
+1. Começa com uma frase referenciando que você analisou o site deles — ex: "Passei pelo site da {empresa_nome} e...", "Dei uma olhada no que vocês fazem e...", "Analisei o site de vocês e..." — use o insight do site para contextualizar
 2. Conecta com o desafio que ele descreveu
-3. Apresenta o ROI calculado de forma impactante (use os números exatos)
+3. Mostra o impacto real: leads que somem por atendimento lento = contratos perdidos. Automatizando, 100% dos contatos são atendidos na hora, 24/7 = mais contratos fechados com o mesmo time. Use o tamanho do time ou contexto do negócio para dar peso. PROIBIDO inventar valores monetários.
 4. Convida para call de 30min de forma direta e assertiva
 
 REGRAS:
+- PROIBIDO começar com "Oi", "Olá", "Oi {nome_lead}", qualquer saudação
 - Máximo 5-6 linhas, sem bullets, sem listas
 - Tom firme de consultor — PROIBIDO: "poderia", "acredito que", "Que tal?"
 - PROIBIDO: "chatbot", "robô", "bot"
-- Use os números do ROI calculado
+- PROIBIDO inventar números monetários — fale de impacto (contratos, leads, atendimento)
 
 Responda APENAS com a mensagem."""
                     response = self.llm.invoke([SystemMessage(content=offer_prompt)] + list(messages)[-2:])

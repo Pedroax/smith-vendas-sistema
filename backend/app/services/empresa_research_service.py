@@ -148,8 +148,8 @@ Responda APENAS com a frase, sem explicações."""
             content = await self.website_research.fetch_website_content(url)
 
             if not content:
-                logger.warning(f"Não foi possível acessar {url}")
-                return None
+                logger.warning(f"Não foi possível acessar {url} — gerando insight por domínio")
+                return await self._generate_insight_sem_site(empresa_nome, url)
 
             # 2. Tentar com Gemini primeiro
             insight = None
@@ -175,6 +175,58 @@ Responda APENAS com a frase, sem explicações."""
         except Exception as e:
             logger.error(f"Erro ao pesquisar empresa: {e}")
             return None
+
+    async def _generate_insight_sem_site(
+        self,
+        company_name: str,
+        url: str
+    ) -> Optional[str]:
+        """
+        Gera 1 insight de vendas curto usando apenas nome da empresa e URL.
+        Chamado quando o scraping falha (403, timeout, etc).
+        """
+        try:
+            from langchain_openai import ChatOpenAI
+            from langchain_core.messages import SystemMessage
+
+            llm = ChatOpenAI(
+                model="gpt-4o-mini",
+                temperature=0.4,
+                api_key=settings.openai_api_key,
+                request_timeout=15
+            )
+
+            prompt = f"""Você é um assistente de vendas da AutomateX, empresa que vende automação de atendimento e vendas via WhatsApp/IA.
+
+EMPRESA: {company_name}
+URL: {url}
+
+Pelo nome da empresa e URL, infira o segmento e gere APENAS 1 frase de insight para usar naturalmente em conversa de vendas pelo WhatsApp.
+
+REGRAS:
+- Máximo 2 linhas
+- Tom conversacional, não formal
+- Conectar o segmento inferido com o problema que a AutomateX resolve (atendimento lento, perda de leads, processos manuais)
+- Começar com "Vi que" ou "Percebi que"
+- PROIBIDO: "Acredito que", "poderia", "talvez", "chatbot", "robô", "bot"
+
+EXEMPLOS:
+- "Vi que a {company_name} atua no segmento de baterias — distribuidoras assim costumam perder pedidos por demora no atendimento."
+- "Percebi que vocês trabalham com varejo — times de vendas nesse segmento geralmente perdem leads por falta de resposta rápida."
+
+Responda APENAS com a frase, sem explicações."""
+
+            response = await llm.ainvoke([SystemMessage(content=prompt)])
+            insight = response.content.strip()
+
+            if insight and len(insight) > 10:
+                logger.info(f"Insight gerado por domínio para {company_name}: {insight[:80]}...")
+                return insight
+
+        except Exception as e:
+            logger.error(f"Erro ao gerar insight por domínio: {e}")
+
+        return None
 
     def _generate_plano_personalizado(
         self,

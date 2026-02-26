@@ -706,12 +706,52 @@ REGRAS CRÍTICAS:
 
             logger.info(f"🎯 Próximo passo: {proximo_passo}")
 
-            # ===== OFERECER AGENDAMENTO COM ROI (mensagem controlada, não LLM) =====
+            # ===== OFERECER AGENDAMENTO COM ROI =====
             if proximo_passo == "oferecer_agendamento":
                 logger.info(f"Lead {lead.nome} totalmente qualificado - oferecendo agendamento com ROI")
                 from app.services.roi_calculator import calcular_roi, formatar_mensagem_roi
                 roi_resultado = calcular_roi(lead.qualification_data)
-                response = AIMessage(content=formatar_mensagem_roi(roi_resultado, lead.nome, empresa_nome))
+                roi_base = formatar_mensagem_roi(roi_resultado, lead.nome, empresa_nome)
+
+                # Verificar se temos insight do site para personalizar a oferta
+                site_insight = None
+                try:
+                    from app.services.empresa_research_service import empresa_research_service
+                    site_insight = empresa_research_service.get_cached_insight(str(lead.id))
+                    if site_insight:
+                        logger.info(f"Usando insight do site na oferta de ROI: {site_insight[:60]}...")
+                except Exception:
+                    pass
+
+                if site_insight:
+                    # Gerar oferta personalizada com insight do site + ROI
+                    nome_lead = lead.nome.split()[0] if lead.nome else lead.nome
+                    offer_prompt = f"""Você é Smith, consultor da AutomateX.
+
+DADOS DO LEAD:
+- Nome: {nome_lead}
+- Empresa: {empresa_nome}
+- Desafio: {lead.qualification_data.maior_desafio or 'não informado'}
+- Insight do site que você analisou: {site_insight}
+- ROI calculado: {roi_base}
+
+Escreva uma mensagem WhatsApp que:
+1. Menciona em 1 frase o que você viu no site deles (mostre que fez o dever de casa)
+2. Conecta com o desafio que ele descreveu
+3. Apresenta o ROI calculado de forma impactante (use os números exatos)
+4. Convida para call de 30min de forma direta e assertiva
+
+REGRAS:
+- Máximo 5-6 linhas, sem bullets, sem listas
+- Tom firme de consultor — PROIBIDO: "poderia", "acredito que", "Que tal?"
+- PROIBIDO: "chatbot", "robô", "bot"
+- Use os números do ROI calculado
+
+Responda APENAS com a mensagem."""
+                    response = self.llm.invoke([SystemMessage(content=offer_prompt)] + list(messages)[-2:])
+                    logger.info("Oferta de ROI personalizada com insight do site gerada via LLM")
+                else:
+                    response = AIMessage(content=roi_base)
 
             else:
                 # ===== LLM COM PROMPT FOCADO - Conversa natural + pergunta específica =====

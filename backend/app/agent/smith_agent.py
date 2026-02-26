@@ -457,11 +457,14 @@ class SmithAgent:
                 coletado.append(f"é decisor: {'sim' if qd.is_decision_maker else 'não'}")
             if qd.maior_desafio: coletado.append(f"desafio principal: {qd.maior_desafio}")
             if qd.urgency: coletado.append(f"urgência: {qd.urgency}")
+            if qd.site_url and qd.site_url != "sem_site": coletado.append(f"site: {qd.site_url}")
+            elif qd.site_url == "sem_site": coletado.append("site: não tem site")
 
         contexto_str = "\n".join(f"  - {c}" for c in coletado) if coletado else "  - (nenhum dado coletado ainda)"
 
         instrucoes = {
             "empresa_e_cargo": "Pergunte em qual empresa ele trabalha e qual é o cargo/função. Pode fazer as duas na mesma mensagem.",
+            "site_empresa": "Peça o site da empresa de forma natural — ex: 'E qual é o site de vocês? Quero dar uma olhada antes de continuar.' Se não tiver site, não tem problema.",
             "contexto_operacional_completo": "Pergunte quantas pessoas tem no time de atendimento/vendas E qual é o faturamento mensal aproximado. Mostre que isso vai te ajudar a calcular o impacto real.",
             "contexto_operacional_funcionarios": "Pergunte quantas pessoas tem no time de atendimento/vendas.",
             "faturamento": "Pergunte o faturamento mensal aproximado. Deixa claro que é pra calcular o impacto.",
@@ -586,6 +589,27 @@ REGRAS CRÍTICAS:
             else:
                 logger.warning(f"⚠️ Nenhum dado novo extraído para {lead.nome}")
 
+            # --- Salvar URL do site se site foi perguntado e lead respondeu ---
+            if (lead.qualification_data and
+                    lead.qualification_data.site_perguntado and
+                    not lead.qualification_data.site_url):
+                try:
+                    from app.services.website_research_service import WebsiteResearchService as _WRS
+                    _wrs_tmp = _WRS()
+                    url_found = None
+                    for msg in reversed(list(messages)[-3:]):
+                        if isinstance(msg, HumanMessage):
+                            url_found = _wrs_tmp.extract_url(msg.content)
+                            if url_found:
+                                break
+                    lead.qualification_data.site_url = url_found or "sem_site"
+                    if url_found:
+                        logger.info(f"🔗 URL do site salva durante qualificação: {url_found}")
+                    else:
+                        logger.info(f"ℹ️ Lead {lead.nome} não forneceu site — marcado como sem_site")
+                except Exception as _e:
+                    logger.debug(f"Erro ao extrair URL do site: {_e}")
+
             # CONDIÇÃO 1: Lead com urgência que aceitou agendar
             tem_urgencia = (
                 lead.qualification_data and
@@ -664,6 +688,8 @@ REGRAS CRÍTICAS:
 
             if not lead.qualification_data or not lead.qualification_data.cargo:
                 proximo_passo = "empresa_e_cargo"
+            elif not lead.qualification_data.site_perguntado:
+                proximo_passo = "site_empresa"
             elif not lead.qualification_data.funcionarios_atendimento:
                 ja_tem_faturamento = bool(lead.qualification_data.faturamento_anual)
                 proximo_passo = "contexto_operacional_completo" if not ja_tem_faturamento else "contexto_operacional_funcionarios"
@@ -709,6 +735,10 @@ REGRAS CRÍTICAS:
 
                 qualify_prompt = self._build_qualification_prompt(lead, proximo_passo, ultima_msg, company_insight)
                 response = self.llm.invoke([SystemMessage(content=qualify_prompt)] + list(messages))
+
+                # Marcar que o site foi perguntado (para saber que na próxima rodada deve salvar a URL)
+                if proximo_passo == "site_empresa" and lead.qualification_data:
+                    lead.qualification_data.site_perguntado = True
 
             # Atualizar estado
             messages.append(response)

@@ -184,8 +184,10 @@ async def process_buffered_message(phone: str, combined_message: str, push_name:
         lead.conversation_history.append(user_message)
         lead.ultima_interacao = datetime.now()
 
-        # 🔍 PESQUISA DE EMPRESA: Se mensagem tem URL → análise síncrona (resposta personalizada)
-        # Se não tem URL → pesquisa background (insight para próximas perguntas)
+        # 🔍 PESQUISA DE EMPRESA
+        # - URL + qualificação COMPLETA → análise síncrona (bypass agente, resposta personalizada)
+        # - URL + ainda qualificando → pesquisa background (agente responde normalmente)
+        # - Sem URL → pesquisa background para insight futuro
         url_analysis_response = None
         try:
             from app.services.empresa_research_service import empresa_research_service
@@ -193,20 +195,35 @@ async def process_buffered_message(phone: str, combined_message: str, push_name:
             _wrs = WebsiteResearchService()
             url_in_message = _wrs.extract_url(combined_message)
 
-            if url_in_message:
-                logger.info(f"🔗 URL detectada na mensagem - executando análise completa do site")
+            # Verificar se qualificação está completa (todos os dados obrigatórios coletados)
+            qualificacao_completa = (
+                lead.qualification_data and
+                lead.qualification_data.cargo and
+                lead.qualification_data.funcionarios_atendimento and
+                lead.qualification_data.faturamento_anual and
+                lead.qualification_data.is_decision_maker is not None and
+                lead.qualification_data.maior_desafio and
+                lead.qualification_data.maior_desafio.strip() and
+                lead.qualification_data.urgency and
+                lead.qualification_data.urgency.strip()
+            )
+
+            if url_in_message and qualificacao_completa:
+                # Lead já qualificado + URL = análise completa do site (bypass do agente)
+                logger.info(f"🔗 URL detectada + qualificação completa — análise personalizada do site")
                 url_analysis_response = await empresa_research_service.research_empresa_com_plano(
                     lead, url_in_message
                 )
                 if url_analysis_response:
                     logger.success(f"✅ Plano personalizado gerado a partir do site")
                 else:
-                    # Se análise falhou, ainda cacheia em background
                     asyncio.create_task(
                         empresa_research_service.run_background_research(lead, combined_message)
                     )
             else:
-                # Sem URL → pesquisa background para insight futuro
+                # URL durante qualificação → background research, agente responde normalmente
+                if url_in_message:
+                    logger.info(f"🔗 URL detectada durante qualificação — pesquisa em background")
                 asyncio.create_task(
                     empresa_research_service.run_background_research(lead, combined_message)
                 )

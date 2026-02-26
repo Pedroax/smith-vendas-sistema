@@ -61,6 +61,10 @@ class QualificationData(BaseModel):
     maior_desafio: Optional[str] = None
     ferramentas_atuais: Optional[List[str]] = None
 
+    # Site da empresa (coletado durante qualificação)
+    site_url: Optional[str] = None       # URL do site ou "sem_site" se não tiver
+    site_perguntado: bool = False        # True depois de perguntar sobre o site
+
 
 class ROIAnalysis(BaseModel):
     """Análise de ROI calculada"""

@@ -715,13 +715,42 @@ REGRAS CRÍTICAS:
 
                 # Verificar se temos insight do site para personalizar a oferta
                 site_insight = None
+                site_url = (lead.qualification_data.site_url
+                            if lead.qualification_data and lead.qualification_data.site_url != "sem_site"
+                            else None)
                 try:
                     from app.services.empresa_research_service import empresa_research_service
+
+                    # 1. Tentar cache em memória primeiro (rápido)
                     site_insight = empresa_research_service.get_cached_insight(str(lead.id))
+
+                    # 2. Cache miss + temos URL → gerar insight agora (síncrono via thread)
+                    if not site_insight and site_url:
+                        logger.info(f"Cache vazio — gerando insight do site {site_url} agora")
+                        import asyncio as _asyncio
+                        from concurrent.futures import ThreadPoolExecutor as _TPE
+
+                        async def _get_insight():
+                            return await empresa_research_service.research_empresa(lead, url=site_url)
+
+                        def _run():
+                            _loop = _asyncio.new_event_loop()
+                            _asyncio.set_event_loop(_loop)
+                            try:
+                                return _loop.run_until_complete(_get_insight())
+                            finally:
+                                _loop.close()
+
+                        try:
+                            with _TPE(max_workers=1) as _ex:
+                                site_insight = _ex.submit(_run).result(timeout=15)
+                        except Exception as _te:
+                            logger.warning(f"Timeout/erro ao gerar insight do site: {_te}")
+
                     if site_insight:
                         logger.info(f"Usando insight do site na oferta de ROI: {site_insight[:60]}...")
-                except Exception:
-                    pass
+                except Exception as _e:
+                    logger.warning(f"Erro ao obter insight do site: {_e}")
 
                 if site_insight:
                     # Gerar oferta personalizada com insight do site + ROI

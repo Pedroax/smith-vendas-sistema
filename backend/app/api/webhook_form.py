@@ -1,13 +1,13 @@
 """
 Webhook para receber leads do formulário da Landing Page (Lovable).
-Qualifica automaticamente e dispara primeira mensagem via Smith/WhatsApp.
+Qualifica automaticamente, salva em sm_lp_submissions e dispara WhatsApp.
 """
 import re
 import uuid
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Request
 from pydantic import BaseModel
 from loguru import logger
 
@@ -17,6 +17,7 @@ from app.models.lead import (
 )
 from app.repository.leads_repository import LeadsRepository
 from app.services.uazapi_service import get_uazapi_service
+from app.database import get_supabase
 
 router = APIRouter()
 repository = LeadsRepository()
@@ -41,6 +42,12 @@ class FormLeadPayload(BaseModel):
     faturamento_mensal: float
     cargo: str
     telefone: str
+    # UTM parameters (opcionais)
+    utm_source: Optional[str] = None
+    utm_medium: Optional[str] = None
+    utm_campaign: Optional[str] = None
+    utm_term: Optional[str] = None
+    utm_content: Optional[str] = None
 
 
 def normalizar_telefone(tel: str) -> str:
@@ -59,13 +66,39 @@ def is_qualificado(cargo: str, faturamento_mensal: float) -> bool:
     return cargo_ok and fat_ok
 
 
+async def salvar_submission(payload: FormLeadPayload, tel: str, qualificado: bool, lead_id: Optional[str], request: Request):
+    """Salva todos os dados do formulário em sm_lp_submissions."""
+    try:
+        supabase = get_supabase()
+        supabase.table("sm_lp_submissions").insert({
+            "nome": payload.nome,
+            "empresa": payload.empresa,
+            "segmento": payload.segmento,
+            "cargo": payload.cargo,
+            "telefone": tel,
+            "faturamento_mensal": payload.faturamento_mensal,
+            "utm_source": payload.utm_source,
+            "utm_medium": payload.utm_medium,
+            "utm_campaign": payload.utm_campaign,
+            "utm_term": payload.utm_term,
+            "utm_content": payload.utm_content,
+            "qualificado": qualificado,
+            "lead_id": lead_id,
+            "ip_address": request.client.host if request.client else None,
+        }).execute()
+        logger.info(f"Submission salva em sm_lp_submissions: {payload.nome}")
+    except Exception as e:
+        logger.error(f"Erro ao salvar submission: {e}")
+
+
 @router.post("/form")
-async def webhook_form(payload: FormLeadPayload):
+async def webhook_form(payload: FormLeadPayload, request: Request):
     """
     Recebe lead do formulário da LP, qualifica e registra no CRM.
-    Se qualificado, envia primeira mensagem via WhatsApp.
+    Salva SEMPRE em sm_lp_submissions (qualificado ou não).
+    Se qualificado, cria lead no CRM e envia primeira mensagem via WhatsApp.
     """
-    logger.info(f"📋 Lead do formulário recebido: {payload.nome} | {payload.empresa} | {payload.cargo} | R${payload.faturamento_mensal:,.0f}/mês")
+    logger.info(f"📋 Formulário recebido: {payload.nome} | {payload.empresa} | {payload.cargo} | R${payload.faturamento_mensal:,.0f}/mês | utm_source={payload.utm_source}")
 
     tel = normalizar_telefone(payload.telefone)
     qualificado = is_qualificado(payload.cargo, payload.faturamento_mensal)
@@ -99,7 +132,10 @@ async def webhook_form(payload: FormLeadPayload):
         )
 
         await repository.create(lead)
-        logger.info(f"Lead qualificado salvo: {lead.id}")
+        logger.info(f"Lead qualificado salvo no CRM: {lead.id}")
+
+        # Salvar submission com lead_id
+        await salvar_submission(payload, tel, True, lead.id, request)
 
         # Montar e enviar primeira mensagem
         nome_curto = payload.nome.split()[0]
@@ -153,6 +189,9 @@ async def webhook_form(payload: FormLeadPayload):
 
         await repository.create(lead)
         logger.info(f"Lead não qualificado salvo: {lead.id} ({payload.nome})")
+
+        # Salvar submission com lead_id
+        await salvar_submission(payload, tel, False, lead.id, request)
 
         return {
             "success": True,

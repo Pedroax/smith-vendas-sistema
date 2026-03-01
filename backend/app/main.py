@@ -147,7 +147,7 @@ async def health_check():
 # ROTAS DA API
 # ========================================
 
-from app.api import leads, webhook, analytics, projects, webhook_facebook, test_qualification, webhook_evolution, webhook_uazapi, client_portal, interactions, appointments, notifications, search, tasks, admin_auth, invoices, milestones
+from app.api import leads, webhook, analytics, projects, webhook_facebook, test_qualification, webhook_evolution, webhook_uazapi, client_portal, interactions, appointments, notifications, search, tasks, admin_auth, invoices, milestones, webhook_form
 
 # Incluir routers
 app.include_router(leads.router, prefix="/api/leads", tags=["Leads"])
@@ -155,6 +155,7 @@ app.include_router(webhook.router, prefix="/webhook", tags=["Webhook"])
 app.include_router(webhook_facebook.router, prefix="/webhook", tags=["Facebook"])
 app.include_router(webhook_evolution.router, tags=["Evolution"])  # Webhook WhatsApp (DEPRECATED)
 app.include_router(webhook_uazapi.router, prefix="/webhook", tags=["UAZAPI"])  # Webhook WhatsApp (NOVO)
+app.include_router(webhook_form.router, prefix="/webhook", tags=["Form LP"])  # Formulário Landing Page
 app.include_router(test_qualification.router, prefix="/api", tags=["Testing"])
 app.include_router(analytics.router, prefix="/api", tags=["Analytics"])
 app.include_router(projects.router, prefix="/api/projects", tags=["Projects"])

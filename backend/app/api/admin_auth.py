@@ -6,12 +6,12 @@ Suporta:
 """
 
 import hmac
+import bcrypt
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from loguru import logger
-from passlib.context import CryptContext
 
 from app.config import settings
 from app.middleware.auth import (
@@ -24,7 +24,13 @@ from app.database import get_supabase
 
 router = APIRouter(prefix="/api/admin", tags=["Admin Auth"])
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def _verify_password(plain: str, hashed: str) -> bool:
+    return bcrypt.checkpw(plain.encode(), hashed.encode())
+
+
+def _hash_password(plain: str) -> str:
+    return bcrypt.hashpw(plain.encode(), bcrypt.gensalt(12)).decode()
 
 
 # ── Modelos ────────────────────────────────────────────────────────────────────
@@ -97,7 +103,7 @@ async def admin_login(data: AdminLoginRequest):
 
     # 2. Usuário no banco
     usuario = _buscar_usuario_db(data.email)
-    if usuario and pwd_context.verify(data.senha, usuario["senha_hash"]):
+    if usuario and _verify_password(data.senha, usuario["senha_hash"]):
         access, refresh = _build_tokens(usuario["id"], usuario["role"], usuario["nome"])
         return AdminLoginResponse(
             access_token=access,
@@ -173,7 +179,7 @@ async def criar_usuario(data: CreateUserRequest, _=Depends(get_current_admin)):
     if data.role not in ("admin", "marketing"):
         raise HTTPException(status_code=400, detail="Role inválido. Use 'admin' ou 'marketing'.")
 
-    senha_hash = pwd_context.hash(data.senha)
+    senha_hash = _hash_password(data.senha)
 
     try:
         supabase = get_supabase()

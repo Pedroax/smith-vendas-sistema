@@ -93,6 +93,7 @@ class Settings(BaseSettings):
     # Admin Login
     admin_email: str = Field(default="admin@smith.com", env="ADMIN_EMAIL")
     admin_password: str = Field(default="admin123", env="ADMIN_PASSWORD")
+    admin_nome: str = Field(default="Pedro Machado", env="ADMIN_NOME")
 
     # Notificações
     notification_whatsapp_enabled: bool = Field(default=True, env="NOTIFICATION_WHATSAPP_ENABLED")

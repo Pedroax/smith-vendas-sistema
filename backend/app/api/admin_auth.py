@@ -1,19 +1,33 @@
 """
 Autenticação do Admin - Sistema Interno Smith 2.0
-Login único com credenciais do administrador via env
+Suporta:
+  - Admin principal via env vars (Pedro)
+  - Usuários adicionais via tabela sm_usuarios (role: admin | marketing)
 """
 
 import hmac
+from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from loguru import logger
+from passlib.context import CryptContext
 
 from app.config import settings
-from app.middleware.auth import create_access_token, create_refresh_token, verify_token
+from app.middleware.auth import (
+    create_access_token,
+    create_refresh_token,
+    verify_token,
+    get_current_admin,
+)
+from app.database import get_supabase
 
 router = APIRouter(prefix="/api/admin", tags=["Admin Auth"])
 
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+# ── Modelos ────────────────────────────────────────────────────────────────────
 
 class AdminLoginRequest(BaseModel):
     email: str
@@ -31,51 +45,114 @@ class AdminRefreshRequest(BaseModel):
     refresh_token: str
 
 
+class CreateUserRequest(BaseModel):
+    nome: str
+    email: str
+    senha: str
+    role: str = "marketing"
+
+
+# ── Helpers ────────────────────────────────────────────────────────────────────
+
+def _is_env_admin(email: str, senha: str) -> bool:
+    """Verifica se as credenciais batem com o admin das env vars."""
+    email_ok = hmac.compare_digest(email.strip().lower(), settings.admin_email.strip().lower())
+    senha_ok = hmac.compare_digest(senha, settings.admin_password)
+    return email_ok and senha_ok
+
+
+def _buscar_usuario_db(email: str) -> Optional[dict]:
+    """Busca usuário ativo em sm_usuarios pelo email."""
+    try:
+        supabase = get_supabase()
+        res = supabase.table("sm_usuarios").select("*").eq("email", email.strip().lower()).eq("ativo", True).execute()
+        if res.data:
+            return res.data[0]
+    except Exception as e:
+        logger.error(f"Erro ao buscar usuário no DB: {e}")
+    return None
+
+
+def _build_tokens(sub: str, role: str, nome: str):
+    extra = {"role": role, "nome": nome}
+    access = create_access_token(sub, extra=extra)
+    refresh = create_refresh_token(sub, extra=extra)
+    return access, refresh
+
+
+# ── Endpoints ──────────────────────────────────────────────────────────────────
+
 @router.post("/auth/login", response_model=AdminLoginResponse)
 async def admin_login(data: AdminLoginRequest):
-    """Login do administrador"""
-    email_match = hmac.compare_digest(data.email.strip().lower(), settings.admin_email.strip().lower())
-    password_match = hmac.compare_digest(data.senha, settings.admin_password)
+    """Login — verifica env admin primeiro, depois DB."""
 
-    if not email_match or not password_match:
-        raise HTTPException(status_code=401, detail="Email ou senha inválidos")
+    # 1. Admin via env
+    if _is_env_admin(data.email, data.senha):
+        access, refresh = _build_tokens("admin", "admin", settings.admin_nome)
+        return AdminLoginResponse(
+            access_token=access,
+            refresh_token=refresh,
+            admin={"id": "admin", "email": settings.admin_email, "nome": settings.admin_nome, "role": "admin"},
+        )
 
-    access_token = create_access_token("admin")
-    refresh_token = create_refresh_token("admin")
+    # 2. Usuário no banco
+    usuario = _buscar_usuario_db(data.email)
+    if usuario and pwd_context.verify(data.senha, usuario["senha_hash"]):
+        access, refresh = _build_tokens(usuario["id"], usuario["role"], usuario["nome"])
+        return AdminLoginResponse(
+            access_token=access,
+            refresh_token=refresh,
+            admin={
+                "id": usuario["id"],
+                "email": usuario["email"],
+                "nome": usuario["nome"],
+                "role": usuario["role"],
+            },
+        )
 
-    return AdminLoginResponse(
-        access_token=access_token,
-        refresh_token=refresh_token,
-        admin={
-            "id": "admin",
-            "email": settings.admin_email,
-            "nome": "Pedro Machado",
-            "role": "admin",
-        },
-    )
+    raise HTTPException(status_code=401, detail="Email ou senha inválidos")
 
 
 @router.post("/auth/refresh", response_model=AdminLoginResponse)
 async def admin_refresh(data: AdminRefreshRequest):
-    """Renovar token do admin"""
+    """Renova token preservando role e nome do payload anterior."""
     try:
         payload = verify_token(data.refresh_token, "refresh")
 
-        if payload.get("sub") != "admin":
+        sub = payload.get("sub")
+        role = payload.get("role", "admin")
+        nome = payload.get("nome", "")
+
+        if not sub:
             raise HTTPException(status_code=401, detail="Token inválido")
 
-        access_token = create_access_token("admin")
-        refresh_token = create_refresh_token("admin")
+        # Reconstruir info do admin
+        if sub == "admin":
+            email = settings.admin_email
+            nome = settings.admin_nome
+            role = "admin"
+        else:
+            # Buscar no DB para garantir que ainda está ativo
+            try:
+                supabase = get_supabase()
+                res = supabase.table("sm_usuarios").select("id,email,nome,role,ativo").eq("id", sub).execute()
+                if not res.data or not res.data[0]["ativo"]:
+                    raise HTTPException(status_code=401, detail="Usuário inativo ou não encontrado")
+                u = res.data[0]
+                email = u["email"]
+                nome = u["nome"]
+                role = u["role"]
+            except HTTPException:
+                raise
+            except Exception as e:
+                logger.error(f"Erro ao validar refresh: {e}")
+                raise HTTPException(status_code=401, detail="Token inválido")
 
+        access, refresh = _build_tokens(sub, role, nome)
         return AdminLoginResponse(
-            access_token=access_token,
-            refresh_token=refresh_token,
-            admin={
-                "id": "admin",
-                "email": settings.admin_email,
-                "nome": "Pedro Machado",
-                "role": "admin",
-            },
+            access_token=access,
+            refresh_token=refresh,
+            admin={"id": sub, "email": email, "nome": nome, "role": role},
         )
     except HTTPException:
         raise
@@ -85,11 +162,34 @@ async def admin_refresh(data: AdminRefreshRequest):
 
 
 @router.get("/auth/me")
-async def admin_me():
-    """Dados do admin logado"""
-    return {
-        "id": "admin",
-        "email": settings.admin_email,
-        "nome": "Pedro Machado",
-        "role": "admin",
-    }
+async def admin_me(current=Depends(get_current_admin)):
+    """Dados do usuário logado."""
+    return {"id": current["id"], "role": current["role"]}
+
+
+@router.post("/users")
+async def criar_usuario(data: CreateUserRequest, _=Depends(get_current_admin)):
+    """Cria novo usuário no sistema (admin only)."""
+    if data.role not in ("admin", "marketing"):
+        raise HTTPException(status_code=400, detail="Role inválido. Use 'admin' ou 'marketing'.")
+
+    senha_hash = pwd_context.hash(data.senha)
+
+    try:
+        supabase = get_supabase()
+        res = supabase.table("sm_usuarios").insert({
+            "nome": data.nome,
+            "email": data.email.strip().lower(),
+            "senha_hash": senha_hash,
+            "role": data.role,
+            "ativo": True,
+        }).execute()
+
+        usuario = res.data[0]
+        logger.info(f"Usuário criado: {usuario['email']} role={usuario['role']}")
+        return {"id": usuario["id"], "email": usuario["email"], "nome": usuario["nome"], "role": usuario["role"]}
+    except Exception as e:
+        logger.error(f"Erro ao criar usuário: {e}")
+        if "unique" in str(e).lower() or "duplicate" in str(e).lower():
+            raise HTTPException(status_code=409, detail="Email já cadastrado.")
+        raise HTTPException(status_code=500, detail="Erro ao criar usuário.")

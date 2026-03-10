@@ -34,6 +34,7 @@ export default function LoginPage() {
       }
 
       adminAuth.setTokens(data.access_token, data.refresh_token);
+      if (data.admin) adminAuth.setUser(data.admin);
       router.push('/dashboard');
     } catch (err: any) {
       setError(err.message || 'Erro ao conectar com o servidor');

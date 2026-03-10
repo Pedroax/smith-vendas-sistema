@@ -9,80 +9,61 @@ const REFRESH_TOKEN_KEY = 'portal_refresh_token';
 
 const ADMIN_ACCESS_TOKEN_KEY = 'smith_access_token';
 const ADMIN_REFRESH_TOKEN_KEY = 'smith_refresh_token';
+const ADMIN_USER_KEY = 'smith_user';
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  nome: string;
+  role: 'admin' | 'marketing';
+}
 
 export const authStorage = {
-  /**
-   * Save authentication tokens
-   */
   setTokens(accessToken: string, refreshToken: string): void {
     if (typeof window === 'undefined') return;
-
     localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
     localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
   },
 
-  /**
-   * Get access token
-   */
   getAccessToken(): string | null {
     if (typeof window === 'undefined') return null;
     return localStorage.getItem(ACCESS_TOKEN_KEY);
   },
 
-  /**
-   * Get refresh token
-   */
   getRefreshToken(): string | null {
     if (typeof window === 'undefined') return null;
     return localStorage.getItem(REFRESH_TOKEN_KEY);
   },
 
-  /**
-   * Clear all authentication tokens
-   */
   clearTokens(): void {
     if (typeof window === 'undefined') return;
-
     localStorage.removeItem(ACCESS_TOKEN_KEY);
     localStorage.removeItem(REFRESH_TOKEN_KEY);
   },
 
-  /**
-   * Check if user is authenticated
-   */
   isAuthenticated(): boolean {
     return !!this.getAccessToken();
   }
 };
 
-/**
- * Refresh the access token using the refresh token
- */
 export async function refreshAccessToken(): Promise<string | null> {
   const refreshToken = authStorage.getRefreshToken();
-
-  if (!refreshToken) {
-    return null;
-  }
+  if (!refreshToken) return null;
 
   try {
     const response = await fetch(`${API_URL}/api/portal/auth/refresh`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refresh_token: refreshToken }),
     });
 
     if (!response.ok) {
-      // Refresh token is invalid or expired
       authStorage.clearTokens();
       return null;
     }
 
     const data = await response.json();
     authStorage.setTokens(data.access_token, data.refresh_token);
-
     return data.access_token;
   } catch (error) {
     console.error('Error refreshing token:', error);
@@ -91,42 +72,23 @@ export async function refreshAccessToken(): Promise<string | null> {
   }
 }
 
-/**
- * Make an authenticated API request
- */
-export async function authenticatedFetch(
-  url: string,
-  options: RequestInit = {}
-): Promise<Response> {
+export async function authenticatedFetch(url: string, options: RequestInit = {}): Promise<Response> {
   let token = authStorage.getAccessToken();
 
-  // First attempt
   let response = await fetch(url, {
     ...options,
-    headers: {
-      ...options.headers,
-      'Authorization': token ? `Bearer ${token}` : '',
-    },
+    headers: { ...options.headers, 'Authorization': token ? `Bearer ${token}` : '' },
   });
 
-  // If unauthorized, try to refresh token and retry
   if (response.status === 401) {
     token = await refreshAccessToken();
-
     if (token) {
-      // Retry with new token
       response = await fetch(url, {
         ...options,
-        headers: {
-          ...options.headers,
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { ...options.headers, 'Authorization': `Bearer ${token}` },
       });
-    } else {
-      // Redirect to login if refresh failed
-      if (typeof window !== 'undefined') {
-        window.location.href = '/portal/login';
-      }
+    } else if (typeof window !== 'undefined') {
+      window.location.href = '/portal/login';
     }
   }
 
@@ -144,6 +106,18 @@ export const adminAuth = {
     localStorage.setItem(ADMIN_REFRESH_TOKEN_KEY, refreshToken);
   },
 
+  setUser(user: AdminUser): void {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(ADMIN_USER_KEY, JSON.stringify(user));
+  },
+
+  getUser(): AdminUser | null {
+    if (typeof window === 'undefined') return null;
+    const raw = localStorage.getItem(ADMIN_USER_KEY);
+    if (!raw) return null;
+    try { return JSON.parse(raw) as AdminUser; } catch { return null; }
+  },
+
   getAccessToken(): string | null {
     if (typeof window === 'undefined') return null;
     return localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY);
@@ -158,6 +132,7 @@ export const adminAuth = {
     if (typeof window === 'undefined') return;
     localStorage.removeItem(ADMIN_ACCESS_TOKEN_KEY);
     localStorage.removeItem(ADMIN_REFRESH_TOKEN_KEY);
+    localStorage.removeItem(ADMIN_USER_KEY);
   },
 
   isAuthenticated(): boolean {
@@ -183,6 +158,7 @@ export async function refreshAdminToken(): Promise<string | null> {
 
     const data = await response.json();
     adminAuth.setTokens(data.access_token, data.refresh_token);
+    if (data.admin) adminAuth.setUser(data.admin);
     return data.access_token;
   } catch {
     adminAuth.clearTokens();
@@ -195,10 +171,7 @@ export async function adminFetch(url: string, options: RequestInit = {}): Promis
 
   let response = await fetch(url, {
     ...options,
-    headers: {
-      ...options.headers,
-      'Authorization': token ? `Bearer ${token}` : '',
-    },
+    headers: { ...options.headers, 'Authorization': token ? `Bearer ${token}` : '' },
   });
 
   if (response.status === 401) {
@@ -206,10 +179,7 @@ export async function adminFetch(url: string, options: RequestInit = {}): Promis
     if (token) {
       response = await fetch(url, {
         ...options,
-        headers: {
-          ...options.headers,
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { ...options.headers, 'Authorization': `Bearer ${token}` },
       });
     } else if (typeof window !== 'undefined') {
       window.location.href = '/login';

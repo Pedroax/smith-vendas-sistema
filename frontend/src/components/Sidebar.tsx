@@ -3,30 +3,44 @@
 import { Home, Users, MessageSquare, Calendar, BarChart3, Settings, Bot, Zap, Kanban, Globe, Package, CheckSquare, LogOut, DollarSign } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { adminAuth } from '@/lib/auth';
+import { useEffect, useState } from 'react';
+import { adminAuth, type AdminUser } from '@/lib/auth';
 
-const menuItems = [
-  { icon: Home, label: 'Dashboard', href: '/dashboard', badge: null },
-  { icon: Users, label: 'CRM', href: '/crm', badge: '5' },
-  { icon: MessageSquare, label: 'Conversas', href: '/conversas', badge: '3' },
-  { icon: Calendar, label: 'Agendamentos', href: '/agendamentos', badge: null },
-  { icon: Kanban, label: 'Pipeline', href: '/pipeline', badge: null },
-  { icon: CheckSquare, label: 'Tarefas', href: '/tarefas', badge: null },
-  { icon: DollarSign, label: 'Financeiro', href: '/financeiro', badge: null },
-  { icon: BarChart3, label: 'Analytics', href: '/analytics/dashboard', badge: null },
-  { icon: Bot, label: 'Agente IA', href: '/agente', badge: '🔴' },
-  { icon: Globe, label: 'Portal', href: '/admin-portal', badge: null },
-  { icon: Package, label: 'Templates', href: '/admin-portal/templates', badge: null },
+const allMenuItems = [
+  { icon: Home, label: 'Dashboard', href: '/dashboard', badge: null, roles: ['admin', 'marketing'] },
+  { icon: Users, label: 'CRM', href: '/crm', badge: '5', roles: ['admin', 'marketing'] },
+  { icon: MessageSquare, label: 'Conversas', href: '/conversas', badge: '3', roles: ['admin', 'marketing'] },
+  { icon: Calendar, label: 'Agendamentos', href: '/agendamentos', badge: null, roles: ['admin', 'marketing'] },
+  { icon: Kanban, label: 'Pipeline', href: '/pipeline', badge: null, roles: ['admin', 'marketing'] },
+  { icon: CheckSquare, label: 'Tarefas', href: '/tarefas', badge: null, roles: ['admin', 'marketing'] },
+  { icon: DollarSign, label: 'Financeiro', href: '/financeiro', badge: null, roles: ['admin'] },
+  { icon: BarChart3, label: 'Analytics', href: '/analytics/dashboard', badge: null, roles: ['admin', 'marketing'] },
+  { icon: Bot, label: 'Agente IA', href: '/agente', badge: '🔴', roles: ['admin'] },
+  { icon: Globe, label: 'Portal', href: '/admin-portal', badge: null, roles: ['admin'] },
+  { icon: Package, label: 'Templates', href: '/admin-portal/templates', badge: null, roles: ['admin'] },
 ];
 
-const bottomItems = [
-  { icon: Zap, label: 'Integrações', href: '/integracoes' },
-  { icon: Settings, label: 'Configurações', href: '/configuracoes' },
+const allBottomItems = [
+  { icon: Zap, label: 'Integrações', href: '/integracoes', roles: ['admin'] },
+  { icon: Settings, label: 'Configurações', href: '/configuracoes', roles: ['admin'] },
 ];
+
+function getInitials(nome: string): string {
+  return nome.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase();
+}
 
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const [user, setUser] = useState<AdminUser | null>(null);
+
+  useEffect(() => {
+    setUser(adminAuth.getUser());
+  }, []);
+
+  const role = user?.role ?? 'admin';
+  const menuItems = allMenuItems.filter(item => item.roles.includes(role));
+  const bottomItems = allBottomItems.filter(item => item.roles.includes(role));
 
   const handleLogout = () => {
     adminAuth.clearTokens();
@@ -96,39 +110,41 @@ export function Sidebar() {
       </nav>
 
       {/* Menu Inferior */}
-      <div className="p-4 space-y-1 border-t border-gray-700/50">
-        {bottomItems.map((item) => {
-          const Icon = item.icon;
-          const active = isActive(item.href);
+      {bottomItems.length > 0 && (
+        <div className="p-4 space-y-1 border-t border-gray-700/50">
+          {bottomItems.map((item) => {
+            const Icon = item.icon;
+            const active = isActive(item.href);
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`
-                flex items-center gap-3 px-4 py-3 rounded-lg transition-all
-                ${active
-                  ? 'bg-gray-700 text-white'
-                  : 'text-gray-400 hover:bg-gray-700/50 hover:text-white'
-                }
-              `}
-            >
-              <Icon className="w-5 h-5" />
-              <span className="font-medium">{item.label}</span>
-            </Link>
-          );
-        })}
-      </div>
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`
+                  flex items-center gap-3 px-4 py-3 rounded-lg transition-all
+                  ${active
+                    ? 'bg-gray-700 text-white'
+                    : 'text-gray-400 hover:bg-gray-700/50 hover:text-white'
+                  }
+                `}
+              >
+                <Icon className="w-5 h-5" />
+                <span className="font-medium">{item.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      )}
 
       {/* User Profile + Logout */}
       <div className="p-4 border-t border-gray-700/50 space-y-2">
         <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-700/30">
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center">
-            <span className="text-sm font-bold">PM</span>
+            <span className="text-sm font-bold">{user ? getInitials(user.nome) : '?'}</span>
           </div>
-          <div className="flex-1">
-            <p className="text-sm font-medium">Pedro Machado</p>
-            <p className="text-xs text-gray-400">Admin</p>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">{user?.nome ?? '...'}</p>
+            <p className="text-xs text-gray-400 capitalize">{user?.role ?? ''}</p>
           </div>
         </div>
         <button

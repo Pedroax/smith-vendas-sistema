@@ -18,7 +18,7 @@ JWT_REFRESH_EXPIRATION_DAYS = int(os.getenv("JWT_REFRESH_EXPIRATION_DAYS", "30")
 security = HTTPBearer()
 
 
-def create_access_token(client_id: str, expires_hours: Optional[int] = None) -> str:
+def create_access_token(client_id: str, expires_hours: Optional[int] = None, extra: dict = {}) -> str:
     """
     Cria um access token JWT para o cliente
     """
@@ -31,14 +31,15 @@ def create_access_token(client_id: str, expires_hours: Optional[int] = None) -> 
         "sub": client_id,
         "type": "access",
         "exp": expire,
-        "iat": datetime.utcnow()
+        "iat": datetime.utcnow(),
+        **extra,
     }
 
     token = jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
     return token
 
 
-def create_refresh_token(client_id: str) -> str:
+def create_refresh_token(client_id: str, extra: dict = {}) -> str:
     """
     Cria um refresh token JWT para o cliente
     """
@@ -48,7 +49,8 @@ def create_refresh_token(client_id: str) -> str:
         "sub": client_id,
         "type": "refresh",
         "exp": expire,
-        "iat": datetime.utcnow()
+        "iat": datetime.utcnow(),
+        **extra,
     }
 
     token = jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
@@ -105,13 +107,30 @@ async def get_current_admin(
     token = credentials.credentials
     payload = verify_token(token, "access")
 
-    if payload.get("sub") != "admin":
+    if payload.get("role") != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Acesso restrito ao administrador"
         )
 
-    return {"id": "admin", "token": token}
+    return {"id": payload.get("sub"), "role": "admin", "token": token}
+
+
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+) -> dict:
+    """
+    Dependency para rotas autenticadas — valida token (qualquer role)
+    """
+    token = credentials.credentials
+    payload = verify_token(token, "access")
+
+    return {
+        "id": payload.get("sub"),
+        "role": payload.get("role", "marketing"),
+        "nome": payload.get("nome", ""),
+        "token": token,
+    }
 
 
 async def get_optional_client(

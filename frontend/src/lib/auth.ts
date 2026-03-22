@@ -104,6 +104,8 @@ export const adminAuth = {
     if (typeof window === 'undefined') return;
     localStorage.setItem(ADMIN_ACCESS_TOKEN_KEY, accessToken);
     localStorage.setItem(ADMIN_REFRESH_TOKEN_KEY, refreshToken);
+    // Cookie para middleware Edge (sem httpOnly para poder ser setado via JS)
+    document.cookie = `smith_access_token=${accessToken}; path=/; max-age=86400; SameSite=Lax`;
   },
 
   setUser(user: AdminUser): void {
@@ -133,6 +135,7 @@ export const adminAuth = {
     localStorage.removeItem(ADMIN_ACCESS_TOKEN_KEY);
     localStorage.removeItem(ADMIN_REFRESH_TOKEN_KEY);
     localStorage.removeItem(ADMIN_USER_KEY);
+    document.cookie = 'smith_access_token=; path=/; max-age=0';
   },
 
   isAuthenticated(): boolean {

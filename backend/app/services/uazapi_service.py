@@ -74,31 +74,30 @@ class UazapiService:
             logger.error(f"💥 Erro ao enviar via UAZAPI: {str(e)}")
             return False
 
-    def send_typing(self, phone_number: str) -> bool:
+    def send_typing(self, phone_number: str, duration_ms: int = 5000) -> bool:
         """
         Ativa o indicador de digitação (três bolinhas) no WhatsApp do lead.
 
         Args:
             phone_number: Telefone no formato 5521999999999
+            duration_ms: Duração em ms (padrão 5s, suficiente para o agente responder)
 
         Returns:
             True se sucesso, False se erro (falha silenciosa — não crítico)
         """
         try:
-            if '@s.whatsapp.net' not in phone_number:
-                phone_jid = f"{phone_number}@s.whatsapp.net"
-            else:
-                phone_jid = phone_number
+            phone_clean = phone_number.replace('@s.whatsapp.net', '')
 
-            url = f"{self.base_url}/send/presence"
+            url = f"{self.base_url}/chat/sendPresence"
             headers = {
                 "Content-Type": "application/json",
                 "Accept": "application/json",
                 "token": self.token
             }
             payload = {
-                "number": phone_jid,
-                "presence": "composing"
+                "phone": phone_clean,
+                "presence": "composing",
+                "duration": duration_ms
             }
 
             response = requests.post(url, json=payload, headers=headers, timeout=5)

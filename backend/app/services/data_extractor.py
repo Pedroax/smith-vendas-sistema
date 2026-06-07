@@ -3,7 +3,7 @@ Serviço de Extração de Dados de Qualificação
 Usa GPT-4 para extrair dados estruturados do histórico de conversa
 """
 from typing import Optional
-from langchain_openai import ChatOpenAI
+from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import SystemMessage, HumanMessage
 from pydantic import BaseModel, Field
 from loguru import logger
@@ -42,10 +42,11 @@ class DataExtractor:
     """Extrator de dados de qualificação usando LLM"""
 
     def __init__(self):
-        self.llm = ChatOpenAI(
-            model=settings.openai_model,
-            temperature=0.1,  # Baixa temperatura para extração precisa
-            api_key=settings.openai_api_key
+        self.llm = ChatAnthropic(
+            model=settings.claude_model,
+            temperature=0.1,
+            api_key=settings.anthropic_api_key,
+            max_tokens=1024,
         )
 
     def extract_qualification_data(self, lead: Lead) -> Optional[ExtractedData]:

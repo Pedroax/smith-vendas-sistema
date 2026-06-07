@@ -4,7 +4,7 @@ Usa o Agente Smith para analisar e qualificar leads automaticamente
 """
 from typing import Dict, Any
 from loguru import logger
-from langchain_openai import ChatOpenAI
+from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import ChatPromptTemplate
 from app.config import settings
 import re
@@ -22,10 +22,11 @@ class LeadQualificationService:
     """
 
     def __init__(self):
-        self.llm = ChatOpenAI(
-            model="gpt-4o-mini",
+        self.llm = ChatAnthropic(
+            model=settings.claude_model,
             temperature=0.3,
-            api_key=settings.openai_api_key
+            api_key=settings.anthropic_api_key,
+            max_tokens=1024,
         )
 
         # Prompt de qualificação focado em faturamento + cargo

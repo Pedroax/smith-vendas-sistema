@@ -5,7 +5,7 @@ State Machine LangGraph para qualificação e agendamento de leads
 import re
 from typing import TypedDict, Annotated, Sequence, Optional, Any
 from langgraph.graph import StateGraph, END
-from langchain_openai import ChatOpenAI
+from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from datetime import datetime
 
@@ -331,12 +331,13 @@ class SmithAgent:
     """Agente Smith - SDR Inteligente"""
 
     def __init__(self):
-        self.llm = ChatOpenAI(
-            model=settings.openai_model,
-            temperature=0,  # ZERO criatividade - seguir instruções EXATAMENTE
-            api_key=settings.openai_api_key,
-            max_retries=2,  # Limitar retries para evitar loop infinito em erro 429
-            request_timeout=30  # Timeout de 30s por request
+        self.llm = ChatAnthropic(
+            model=settings.claude_model,
+            temperature=0,
+            api_key=settings.anthropic_api_key,
+            max_tokens=2048,
+            max_retries=2,
+            timeout=30,
         )
         self.data_extractor = DataExtractor()
 

@@ -17,7 +17,11 @@ class Settings(BaseSettings):
     log_level: str = Field(default="INFO", env="LOG_LEVEL")
     api_port: int = Field(default=8000, env="API_PORT")
 
-    # OpenAI
+    # Anthropic (Claude) - Agente principal
+    anthropic_api_key: Optional[str] = Field(default=None, env="ANTHROPIC_API_KEY")
+    claude_model: str = Field(default="claude-sonnet-4-6", env="CLAUDE_MODEL")
+
+    # OpenAI - apenas transcrição de áudio (Whisper)
     openai_api_key: str = Field(..., env="OPENAI_API_KEY")
     openai_model: str = Field(default="gpt-4o", env="OPENAI_MODEL")
     openai_temperature: float = Field(default=0.7, env="OPENAI_TEMPERATURE")
@@ -132,8 +136,11 @@ def validate_settings():
     errors = []
 
     # Verifica se API keys estão configuradas (relaxado para modo mock/teste)
+    if not settings.anthropic_api_key:
+        errors.append("⚠️  ANTHROPIC_API_KEY não configurada - agente Smith não funcionará")
+
     if not settings.openai_api_key or settings.openai_api_key == "sk-...":
-        errors.append("⚠️  OPENAI_API_KEY não configurada (usando valor mock)")
+        errors.append("⚠️  OPENAI_API_KEY não configurada (usada para transcrição de áudio Whisper)")
 
     if not settings.evolution_api_url or settings.evolution_api_url == "https://...":
         errors.append("⚠️  EVOLUTION_API_URL não configurada (usando valor mock)")

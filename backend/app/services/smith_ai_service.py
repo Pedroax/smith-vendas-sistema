@@ -4,7 +4,7 @@ Responde dúvidas, qualifica leads e conduz agendamentos
 """
 from typing import List, Optional
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_openai import ChatOpenAI
+from langchain_anthropic import ChatAnthropic
 from loguru import logger
 
 from app.models.lead import Lead
@@ -18,10 +18,11 @@ class SmithAIService:
     """
 
     def __init__(self):
-        self.model = ChatOpenAI(
-            model=settings.openai_model,
+        self.model = ChatAnthropic(
+            model=settings.claude_model,
             temperature=0.7,
-            api_key=settings.openai_api_key
+            api_key=settings.anthropic_api_key,
+            max_tokens=2048,
         )
 
         # Prompt system do Smith

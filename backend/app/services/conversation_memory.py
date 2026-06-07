@@ -39,14 +39,11 @@ class SupabaseChatMemory:
             Lista de mensagens LangChain (HumanMessage, AIMessage)
         """
         try:
-            # Converter lead_id para int para garantir match correto no banco
-            lead_id_int = int(self.lead_id)
-
             # Buscar últimas N mensagens ordenadas por timestamp
             response = (
                 self.supabase.table("conversation_messages")
                 .select("role, content, timestamp")
-                .eq("lead_id", lead_id_int)
+                .eq("lead_id", self.lead_id)
                 .order("timestamp", desc=True)
                 .limit(self.max_messages)
                 .execute()
@@ -105,7 +102,7 @@ class SupabaseChatMemory:
         """
         try:
             message_data = {
-                "lead_id": int(self.lead_id),  # Converter para int (tipo correto)
+                "lead_id": self.lead_id,
                 "role": role,
                 "content": content,
                 "metadata": metadata or {},
@@ -136,27 +133,14 @@ class SupabaseChatMemory:
             True se sucesso, False se erro
         """
         try:
-            # Deletar mensagens com lead_id como INT
-            lead_id_int = int(self.lead_id)
-            response_int = (
-                self.supabase.table("conversation_messages")
-                .delete()
-                .eq("lead_id", lead_id_int)
-                .execute()
-            )
-            count_int = len(response_int.data) if response_int.data else 0
-
-            # Deletar mensagens com lead_id como STRING (mensagens antigas)
-            response_str = (
+            response = (
                 self.supabase.table("conversation_messages")
                 .delete()
                 .eq("lead_id", self.lead_id)
                 .execute()
             )
-            count_str = len(response_str.data) if response_str.data else 0
-
-            total = count_int + count_str
-            logger.warning(f"🗑️ Histórico limpo para lead {self.lead_id} ({total} registros: {count_int} int + {count_str} string)")
+            total = len(response.data) if response.data else 0
+            logger.warning(f"🗑️ Histórico limpo para lead {self.lead_id} ({total} registros)")
             return True
 
         except Exception as e:
@@ -174,13 +158,10 @@ class SupabaseChatMemory:
             Número de mensagens
         """
         try:
-            # Converter lead_id para int para garantir match correto no banco
-            lead_id_int = int(self.lead_id)
-
             response = (
                 self.supabase.table("conversation_messages")
                 .select("id", count="exact")
-                .eq("lead_id", lead_id_int)
+                .eq("lead_id", self.lead_id)
                 .execute()
             )
 

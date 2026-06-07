@@ -186,14 +186,15 @@ Responda APENAS com a frase, sem explicações."""
         Chamado quando o scraping falha (403, timeout, etc).
         """
         try:
-            from langchain_openai import ChatOpenAI
+            from langchain_anthropic import ChatAnthropic
             from langchain_core.messages import SystemMessage
 
-            llm = ChatOpenAI(
-                model="gpt-4o-mini",
+            llm = ChatAnthropic(
+                model=settings.claude_model,
                 temperature=0.4,
-                api_key=settings.openai_api_key,
-                request_timeout=15
+                api_key=settings.anthropic_api_key,
+                max_tokens=256,
+                timeout=15,
             )
 
             prompt = f"""Você é um assistente de vendas da AutomateX, empresa que vende automação de atendimento e vendas via WhatsApp/IA.
@@ -287,19 +288,19 @@ Responda APENAS com a mensagem final, sem título ou explicações."""
         website_content: str
     ) -> Optional[str]:
         """
-        Fallback usando OpenAI GPT-4o para gerar plano personalizado.
-        Sempre disponível quando Gemini não estiver configurado.
+        Gera plano personalizado com Claude (antigo fallback OpenAI).
         """
         try:
-            from langchain_openai import ChatOpenAI
+            from langchain_anthropic import ChatAnthropic
             from langchain_core.messages import SystemMessage
             from app.config import settings
 
-            llm = ChatOpenAI(
-                model=settings.openai_model,
+            llm = ChatAnthropic(
+                model=settings.claude_model,
                 temperature=0.3,
-                api_key=settings.openai_api_key,
-                request_timeout=20
+                api_key=settings.anthropic_api_key,
+                max_tokens=1024,
+                timeout=20,
             )
 
             prompt = f"""Você é Smith, consultor sênior da AutomateX — automação de atendimento e vendas via IA.
@@ -350,14 +351,15 @@ Responda APENAS com a mensagem final, sem título ou explicações."""
         Usa apenas o nome da empresa e URL para inferir o segmento.
         """
         try:
-            from langchain_openai import ChatOpenAI
+            from langchain_anthropic import ChatAnthropic
             from langchain_core.messages import SystemMessage
 
-            llm = ChatOpenAI(
-                model=settings.openai_model,
+            llm = ChatAnthropic(
+                model=settings.claude_model,
                 temperature=0.4,
-                api_key=settings.openai_api_key,
-                request_timeout=20
+                api_key=settings.anthropic_api_key,
+                max_tokens=1024,
+                timeout=20,
             )
 
             prompt = f"""Você é Smith, consultor sênior da AutomateX — automação de atendimento e vendas via IA.

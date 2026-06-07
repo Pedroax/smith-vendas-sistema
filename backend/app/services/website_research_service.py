@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 import asyncio
 import aiohttp
 from bs4 import BeautifulSoup
-from openai import AsyncOpenAI
+import anthropic
 from app.config import settings
 
 
@@ -17,7 +17,7 @@ class WebsiteResearchService:
     """Pesquisa e analisa websites de leads para personalizar atendimento"""
 
     def __init__(self):
-        self.openai_client = AsyncOpenAI(api_key=settings.openai_api_key)
+        self.anthropic_client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
 
     def extract_url(self, message: str) -> Optional[str]:
         """
@@ -189,16 +189,18 @@ Responda APENAS em formato JSON:
     "insight": "Um insight para usar na conversa (ex: 'Vi que trabalham com X. Muitos clientes nossos nesse segmento tinham desafio de Y')"
 }}"""
 
-            response = await self.openai_client.chat.completions.create(
-                model="gpt-4o-mini",
+            response = await self.anthropic_client.messages.create(
+                model=settings.claude_model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.7,
                 max_tokens=300,
-                response_format={"type": "json_object"}
             )
 
             import json
-            result = json.loads(response.choices[0].message.content)
+            raw_text = response.content[0].text
+            # Extrair JSON da resposta (Claude pode adicionar texto fora do JSON)
+            json_match = re.search(r'\{.*\}', raw_text, re.DOTALL)
+            result = json.loads(json_match.group(0) if json_match else raw_text)
 
             return {
                 "summary": result.get("summary", ""),

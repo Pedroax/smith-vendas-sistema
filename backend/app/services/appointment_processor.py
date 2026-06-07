@@ -2,7 +2,7 @@
 Processador de agendamentos
 Extrai data/hora de mensagens naturais e valida
 """
-from langchain_openai import ChatOpenAI
+from langchain_anthropic import ChatAnthropic
 from pydantic import BaseModel, Field
 from datetime import datetime, timedelta
 from typing import Optional
@@ -26,10 +26,11 @@ class AppointmentProcessor:
     """Processa e valida agendamentos"""
 
     def __init__(self):
-        self.llm = ChatOpenAI(
-            model=settings.openai_model,
-            temperature=0.1,  # Baixa temperatura para extração precisa
-            api_key=settings.openai_api_key
+        self.llm = ChatAnthropic(
+            model=settings.claude_model,
+            temperature=0.1,
+            api_key=settings.anthropic_api_key,
+            max_tokens=512,
         )
 
     async def extract_datetime_from_message(

@@ -51,10 +51,14 @@ class UazapiService:
                 "token": self.token
             }
 
+            # Delay proporcional ao tamanho da resposta (mostra bolinhas de digitação)
+            delay_ms = max(1500, min(4000, len(message) * 30))
+
             # Payload no formato UAZAPI oficial
             payload = {
                 "number": phone_jid,
-                "text": message
+                "text": message,
+                "delay": delay_ms
             }
 
             logger.info(f"📤 Enviando via UAZAPI para {phone_jid[:12]}...")

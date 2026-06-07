@@ -167,6 +167,9 @@ async def process_buffered_message(phone: str, combined_message: str, push_name:
         # Buscar ou criar lead
         lead = await get_or_create_lead(phone, push_name)
 
+        # Mostrar indicador de digitação enquanto o agente processa
+        uazapi_service.send_typing(phone)
+
         # Adicionar mensagem combinada ao banco
         await repository.add_conversation_message(
             lead_id=lead.id,

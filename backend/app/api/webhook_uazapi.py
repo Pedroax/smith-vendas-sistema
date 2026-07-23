@@ -100,7 +100,12 @@ async def webhook_uazapi(request: Request):
         message_text = message_obj.get("conversation", "")
 
         if not message_text:
-            logger.warning("Mensagem vazia recebida - ignorando")
+            # 🔍 DIAGNÓSTICO TEMPORÁRIO: mensagem vazia pode ser áudio/mídia sem suporte ainda.
+            # Logamos o payload original completo (sem corte) para descobrir o formato exato.
+            logger.warning(
+                "Mensagem vazia recebida - ignorando | RAW payload.message original: "
+                + str(payload.get("message", {}))
+            )
             return {"status": "ignored", "reason": "empty_message"}
 
         logger.info(f"💬 Mensagem de {push_name} ({phone}): {message_text[:50]}...")

@@ -110,13 +110,67 @@ class UazapiService:
         except Exception:
             return False
 
-    def send_audio(self, phone_number: str, audio_url: str) -> bool:
+    def download_media(self, message_id: str) -> Optional[tuple]:
         """
-        Envia áudio via UAZAPI
+        Baixa mídia de uma mensagem recebida (ex: áudio de voz).
+        A UAZAPI descriptografa o arquivo do WhatsApp no servidor dela
+        e devolve uma URL temporária já pronta para download.
+
+        Args:
+            message_id: ID da mensagem (campo 'id' do payload do webhook, ex: "556191717317:3AEAC5BC0B9C8CA5EEE7")
+
+        Returns:
+            Tupla (bytes do arquivo, mimetype) ou None em caso de erro
+        """
+        try:
+            url = f"{self.base_url}/message/download"
+            headers = {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "token": self.token
+            }
+            payload = {
+                "id": message_id,
+                "return_base64": False,
+                "generate_mp3": True,
+                "return_link": False,
+                "transcribe": False
+            }
+
+            response = requests.post(url, json=payload, headers=headers, timeout=30)
+
+            if response.status_code != 200:
+                logger.error(
+                    f"❌ Erro ao solicitar download de mídia: {response.status_code} - {response.text}"
+                )
+                return None
+
+            data = response.json()
+            file_url = data.get("fileURL")
+            mimetype = data.get("mimetype", "audio/mpeg")
+
+            if not file_url:
+                logger.error(f"❌ Resposta do /message/download sem fileURL: {data}")
+                return None
+
+            file_response = requests.get(file_url, timeout=30)
+            file_response.raise_for_status()
+
+            logger.success(f"✅ Mídia baixada: {len(file_response.content)} bytes ({mimetype})")
+            return file_response.content, mimetype
+
+        except Exception as e:
+            logger.error(f"💥 Erro ao baixar mídia via UAZAPI: {str(e)}")
+            return None
+
+    def send_audio(self, phone_number: str, audio_base64: str, mimetype: str = "audio/ogg; codecs=opus") -> bool:
+        """
+        Envia áudio como mensagem de voz (PTT) via UAZAPI
 
         Args:
             phone_number: Telefone no formato 5521999999999
-            audio_url: URL do áudio
+            audio_base64: Áudio codificado em base64 (sem prefixo "data:...")
+            mimetype: MIME type do áudio gerado
 
         Returns:
             True se sucesso, False se erro
@@ -124,19 +178,20 @@ class UazapiService:
         try:
             phone_clean = phone_number.replace('@s.whatsapp.net', '')
 
-            url = f"{self.base_url}/message/sendAudio/{self.instance_id}"
-
+            url = f"{self.base_url}/send/media"
             headers = {
                 "Content-Type": "application/json",
-                "Authorization": f"Bearer {self.token}"
+                "Accept": "application/json",
+                "token": self.token
             }
-
             payload = {
                 "number": phone_clean,
-                "audio": audio_url
+                "type": "ptt",
+                "file": audio_base64,
+                "mimetype": mimetype
             }
 
-            logger.info(f"🎵 Enviando áudio via UAZAPI para {phone_clean[:8]}...")
+            logger.info(f"🎙️ Enviando resposta em áudio via UAZAPI para {phone_clean[:8]}...")
 
             response = requests.post(url, json=payload, headers=headers, timeout=30)
 

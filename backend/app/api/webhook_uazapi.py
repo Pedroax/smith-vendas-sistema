@@ -32,9 +32,11 @@ from app.services.uazapi_adapter import (
 )
 from app.services.message_debouncer import get_message_debouncer
 from app.services.conversation_memory import load_conversation_history
+from app.services.audio_transcription_service import audio_transcription_service
 from app.agent import smith_agent, smith_graph, AgentState
 from langchain_core.messages import HumanMessage, AIMessage
 from app.repository.leads_repository import LeadsRepository
+import base64
 
 router = APIRouter()
 
@@ -100,11 +102,28 @@ async def webhook_uazapi(request: Request):
         message_text = message_obj.get("conversation", "")
 
         if not message_text:
-            # 🔍 DIAGNÓSTICO TEMPORÁRIO: mensagem vazia pode ser áudio/mídia sem suporte ainda.
-            # Logamos o payload original completo (sem corte) para descobrir o formato exato.
+            # Payload original da UAZAPI (antes da conversão pro formato Evolution)
+            # ainda tem os campos de mídia — é onde detectamos mensagens de áudio.
+            original_message = payload.get("message", {})
+            message_type = original_message.get("messageType", "")
+            media_type = original_message.get("mediaType", "")
+
+            is_audio_message = (
+                message_type == "AudioMessage" or
+                media_type in ("audio", "ptt", "myaudio")
+            )
+
+            if is_audio_message:
+                media_id = original_message.get("id")
+                logger.info(f"🎤 Mensagem de áudio detectada de {push_name} ({phone}) - processando em background")
+                asyncio.create_task(
+                    process_audio_message(phone, push_name, media_id)
+                )
+                return {"status": "processing_audio", "phone": phone}
+
             logger.warning(
                 "Mensagem vazia recebida - ignorando | RAW payload.message original: "
-                + str(payload.get("message", {}))
+                + str(original_message)
             )
             return {"status": "ignored", "reason": "empty_message"}
 
@@ -154,7 +173,51 @@ async def webhook_uazapi(request: Request):
         }
 
 
-async def process_buffered_message(phone: str, combined_message: str, push_name: str):
+async def process_audio_message(phone: str, push_name: str, media_id: str):
+    """
+    Baixa e transcreve uma mensagem de áudio recebida via UAZAPI, depois
+    injeta o texto transcrito no buffer normal (debouncer) como se fosse
+    uma mensagem de texto — o agente processa igual, e a resposta final
+    é enviada de volta como áudio (ver process_buffered_message).
+
+    Args:
+        phone: Telefone do usuário (sem @s.whatsapp.net)
+        push_name: Nome do contato
+        media_id: ID da mensagem de áudio (campo 'id' do payload da UAZAPI)
+    """
+    try:
+        media = await asyncio.to_thread(uazapi_service.download_media, media_id)
+        if not media:
+            logger.error(f"❌ Falha ao baixar áudio de {push_name} ({phone[:12]}...)")
+            return
+
+        audio_bytes, mimetype = media
+        audio_format = "mp3" if "mpeg" in mimetype else "ogg"
+
+        transcribed = await audio_transcription_service.transcribe_audio(
+            audio_data=audio_bytes,
+            audio_format=audio_format
+        )
+
+        if not transcribed:
+            logger.warning(f"⚠️ Não foi possível transcrever áudio de {push_name} ({phone[:12]}...)")
+            return
+
+        logger.success(f"✅ Áudio de {push_name} transcrito: '{transcribed[:80]}...'")
+
+        await message_debouncer.add_message(
+            phone=phone,
+            message=transcribed,
+            callback=process_buffered_message,
+            push_name=push_name,
+            is_audio=True
+        )
+
+    except Exception as e:
+        logger.error(f"❌ Erro ao processar áudio de {phone[:12]}...: {e}", exc_info=True)
+
+
+async def process_buffered_message(phone: str, combined_message: str, push_name: str, is_audio: bool = False):
     """
     Processa mensagem(ns) combinada(s) após buffer
 
@@ -165,6 +228,8 @@ async def process_buffered_message(phone: str, combined_message: str, push_name:
         phone: Telefone do usuário (sem @s.whatsapp.net)
         combined_message: Mensagens combinadas separadas por \\n
         push_name: Nome do contato
+        is_audio: Se True, a última mensagem do buffer veio de um áudio —
+                  a resposta é enviada de volta como nota de voz (PTT)
     """
     try:
         logger.info(f"🔄 Processando mensagem buffered de {push_name} ({phone[:12]}...)")
@@ -284,7 +349,20 @@ async def process_buffered_message(phone: str, combined_message: str, push_name:
         await repository.update(lead.id, update_data)
 
         # 📤 ENVIAR RESPOSTA VIA UAZAPI
-        success = uazapi_service.send_text_message(phone, response_text)
+        # Se o lead mandou áudio, respondemos com áudio (voz) também.
+        # Se a geração/envio de áudio falhar por qualquer motivo, caímos para texto
+        # para não deixar o lead sem resposta nenhuma.
+        success = False
+        if is_audio:
+            audio_bytes = await audio_transcription_service.text_to_speech(response_text)
+            if audio_bytes:
+                audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
+                success = uazapi_service.send_audio(phone, audio_b64, mimetype="audio/ogg; codecs=opus")
+                if not success:
+                    logger.warning("⚠️ Falha ao enviar áudio - caindo para resposta em texto")
+
+        if not success:
+            success = uazapi_service.send_text_message(phone, response_text)
 
         if success:
             logger.success(f"✅ Resposta enviada via UAZAPI para {push_name}")

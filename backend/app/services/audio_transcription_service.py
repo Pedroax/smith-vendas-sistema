@@ -74,6 +74,42 @@ class AudioTranscriptionService:
             logger.debug(f"Stack trace: {traceback.format_exc()}")
             return None
 
+    async def text_to_speech(self, text: str, voice: str = "ash") -> Optional[bytes]:
+        """
+        Gera áudio a partir de texto usando a TTS da OpenAI (voz masculina grave e confiante)
+
+        Args:
+            text: Texto a ser sintetizado
+            voice: Voz da OpenAI (padrão "ash" — voz masculina grave)
+
+        Returns:
+            Bytes do áudio em formato Ogg/Opus (compatível com nota de voz do WhatsApp) ou None em caso de erro
+        """
+        try:
+            logger.info(f"🔊 Gerando resposta em áudio ({len(text)} chars, voz={voice})...")
+
+            def _synthesize():
+                response = self.client.audio.speech.create(
+                    model="gpt-4o-mini-tts",
+                    voice=voice,
+                    input=text,
+                    instructions=(
+                        "Fale em português do Brasil com voz grave, confiante e direta — "
+                        "tom de consultor de vendas experiente, natural e sem soar robótico."
+                    ),
+                    response_format="opus"
+                )
+                return response.content
+
+            audio_bytes = await asyncio.to_thread(_synthesize)
+
+            logger.success(f"✅ Áudio TTS gerado ({len(audio_bytes)} bytes)")
+            return audio_bytes
+
+        except Exception as e:
+            logger.error(f"❌ Erro ao gerar áudio TTS: {str(e)}")
+            return None
+
 
 # Instância global
 audio_transcription_service = AudioTranscriptionService()

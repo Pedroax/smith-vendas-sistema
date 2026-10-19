@@ -61,9 +61,9 @@ async def global_search(
         # Search Projects
         try:
             projects_result = (
-                supabase.table("portal_projects")
-                .select("id, nome, cliente_id, cliente_nome, status, valor_total")
-                .or_(f"nome.ilike.{search_term},cliente_nome.ilike.{search_term}")
+                supabase.table("client_projects")
+                .select("id, nome, client_id, status, valor_total")
+                .ilike("nome", search_term)
                 .limit(limit)
                 .execute()
             )
@@ -74,8 +74,8 @@ async def global_search(
                         **project,
                         "type": "project",
                         "title": project["nome"],
-                        "subtitle": f"Cliente: {project.get('cliente_nome', 'N/A')} • Status: {project.get('status', 'N/A')}",
-                        "link": f"/admin-portal/projects/{project['id']}"
+                        "subtitle": f"Status: {project.get('status', 'N/A')}",
+                        "link": f"/admin-portal/projetos/{project['id']}"
                     }
                     for project in projects_result.data
                 ]

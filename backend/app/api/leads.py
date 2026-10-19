@@ -5,6 +5,7 @@ from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Query
 from loguru import logger
 from datetime import datetime
+import re
 import uuid
 
 from app.models.lead import (
@@ -45,7 +46,7 @@ async def create_lead(lead_data: LeadCreate):
         lead = Lead(
             id=lead_id,
             nome=lead_data.nome,
-            telefone=lead_data.telefone,
+            telefone=re.sub(r"\D", "", lead_data.telefone),  # Mesmo formato do WhatsApp
             empresa=lead_data.empresa,
             email=lead_data.email,
             origem=lead_data.origem,
@@ -192,26 +193,15 @@ async def update_lead(lead_id: str, lead_data: LeadUpdate):
         if not existing_lead:
             raise HTTPException(status_code=404, detail="Lead não encontrado")
 
-        # Preparar dados de atualização
-        update_data = lead_data.model_dump(exclude_unset=True)
+        # Preparar dados de atualização (mode="json" já converte enums e datas)
+        update_data = lead_data.model_dump(exclude_unset=True, mode="json")
 
-        # Converter Pydantic models para dict se necessário
-        if "qualification_data" in update_data and update_data["qualification_data"]:
-            update_data["qualificacao_detalhes"] = update_data["qualification_data"].model_dump()
-            del update_data["qualification_data"]  # Remove a chave antiga
-
-        if "roi_analysis" in update_data and update_data["roi_analysis"]:
-            roi_dict = update_data["roi_analysis"].model_dump()
-            # Converter datetime para ISO string
-            if roi_dict.get("generated_at"):
-                roi_dict["generated_at"] = roi_dict["generated_at"].isoformat()
-            update_data["roi_analysis"] = roi_dict
-
-        # Converter enums para valores
-        if "status" in update_data:
-            update_data["status"] = update_data["status"].value
-        if "temperatura" in update_data:
-            update_data["temperatura"] = update_data["temperatura"].value
+        # Mapear nomes do model para as colunas do banco
+        if "qualification_data" in update_data:
+            update_data["qualificacao_detalhes"] = update_data.pop("qualification_data")
+        if "notas" in update_data:
+            update_data["observacoes"] = update_data.pop("notas")
+        update_data.pop("requires_human_approval", None)  # Campo não existe no banco
 
         # Atualizar timestamps especiais baseado no status
         if lead_data.status == LeadStatus.GANHO and not existing_lead.won_at:

@@ -1,5 +1,5 @@
 # ===================================
-# SMITH 2.0 - CORE ESSENCIAL (SEM SUPABASE POR ENQUANTO)
+# SMITH 2.0 - CORE ESSENCIAL
 # ===================================
 
 # Web Framework
@@ -41,10 +41,9 @@ google-api-python-client>=2.150.0
 google-auth-httplib2>=0.2.0
 google-auth-oauthlib>=1.2.0
 
-# Database
-supabase>=2.25.0
+# Database (PostgreSQL na Railway)
 sqlalchemy>=2.0.0
-psycopg2-binary>=2.9.0
+psycopg2-binary>=2.9.10
 
 # NOTA: Redis será instalado depois se necessário
 # redis>=5.2.0

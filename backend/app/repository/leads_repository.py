@@ -1,11 +1,10 @@
 """
 Repository para operações de banco de dados com Leads
-Gerencia leads e conversation_messages no Supabase
+Gerencia leads e conversation_messages no PostgreSQL
 """
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from loguru import logger
-from postgrest.exceptions import APIError
 
 from app.database import get_supabase
 from app.models.lead import (
@@ -102,7 +101,7 @@ class LeadsRepository:
             lead_score=db_lead.get("lead_score", 0),
             qualification_data=qualification_data,
             roi_analysis=roi_analysis,
-            valor_estimado=0.0,  # Campo não existe no banco
+            valor_estimado=db_lead.get("valor_estimado") or 0.0,
             meeting_scheduled_at=meeting_scheduled_at,
             meeting_google_event_id=db_lead.get("meeting_google_event_id"),
             temp_meeting_slot=db_lead.get("temp_meeting_slot"),  # Slot temporário de agendamento
@@ -112,7 +111,7 @@ class LeadsRepository:
             ultima_mensagem_ia=None,  # Campo não existe no banco
             notas=db_lead.get("observacoes"),  # observacoes -> notas
             tags=db_lead.get("tags") or [],  # Se None, usar lista vazia
-            ai_summary=None,  # Campo não existe no banco
+            ai_summary=db_lead.get("ai_summary"),
             ai_next_action=None,  # Campo não existe no banco
             requires_human_approval=False,  # Campo não existe no banco
             created_at=created_at,
@@ -181,9 +180,6 @@ class LeadsRepository:
 
             return self._convert_db_to_lead(response.data[0])
 
-        except APIError as e:
-            logger.error(f"Erro API ao criar lead: {e}")
-            raise
         except Exception as e:
             logger.error(f"Erro ao criar lead: {e}")
             raise

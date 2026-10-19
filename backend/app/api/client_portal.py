@@ -185,7 +185,7 @@ async def refresh_token_endpoint(data: RefreshTokenRequest):
     """Renovar access token usando refresh token"""
     try:
         # Verify refresh token
-        payload = verify_token(data.refresh_token, "refresh")
+        payload = verify_admin_token(data.refresh_token, "refresh")
         client_id = payload.get("sub")
 
         # Get client from database

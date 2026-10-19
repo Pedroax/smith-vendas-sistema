@@ -1,11 +1,10 @@
 """
 Repository para operações de banco de dados com Projetos
-Gerencia projetos no Supabase
+Gerencia projetos no PostgreSQL
 """
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 from loguru import logger
-from postgrest.exceptions import APIError
 
 from app.database import get_supabase
 from app.models.project import Project, ProjectStatus, ProjectPriority
@@ -113,9 +112,6 @@ class ProjectsRepository:
 
             return self._convert_db_to_project(response.data[0])
 
-        except APIError as e:
-            logger.error(f"Erro API ao criar projeto: {e}")
-            raise
         except Exception as e:
             logger.error(f"Erro ao criar projeto: {e}")
             raise
@@ -277,7 +273,9 @@ class ProjectsRepository:
             }
 
             for project in all_projects:
-                stats[project.status.value] += 1
+                # Project usa use_enum_values, então status normalmente já vem como string
+                status = project.status.value if isinstance(project.status, ProjectStatus) else project.status
+                stats[status] += 1
 
             return stats
 

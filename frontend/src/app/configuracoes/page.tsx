@@ -366,7 +366,7 @@ export default function ConfiguracoesPage() {
                     { label: 'Versão do Sistema', value: 'Smith 2.0.0' },
                     { label: 'Framework Backend', value: 'FastAPI (Python)' },
                     { label: 'Framework Frontend', value: 'Next.js 16' },
-                    { label: 'Banco de Dados', value: 'Supabase (PostgreSQL)' },
+                    { label: 'Banco de Dados', value: 'PostgreSQL (Railway)' },
                     { label: 'IA Utilizada', value: 'OpenAI GPT-4o' },
                     { label: 'WhatsApp', value: 'Evolution API' },
                   ].map((item) => (

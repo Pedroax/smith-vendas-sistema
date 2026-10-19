@@ -1,12 +1,11 @@
 """
-Repository para gerenciar agendamentos no Supabase
+Repository para gerenciar agendamentos no PostgreSQL
 """
-from supabase import create_client, Client
 from loguru import logger
 from typing import Optional, List
 from datetime import datetime
-import os
 
+from app.database import get_supabase
 from app.models.agendamento import Agendamento, AgendamentoStatus
 
 
@@ -14,14 +13,7 @@ class AgendamentosRepository:
     """Repository para operações de agendamentos no banco"""
 
     def __init__(self):
-        """Inicializa conexão com Supabase"""
-        url = os.getenv("SUPABASE_URL")
-        key = os.getenv("SUPABASE_KEY")
-
-        if not url or not key:
-            raise ValueError("SUPABASE_URL e SUPABASE_KEY devem estar configurados")
-
-        self.client: Client = create_client(url, key)
+        self.client = get_supabase()
         self.table = "agendamentos"
 
     async def create(self, agendamento: Agendamento) -> Agendamento:

@@ -7,9 +7,9 @@ from typing import Optional
 from uuid import UUID
 
 from loguru import logger
-from supabase import Client
 
 from app.database import get_supabase
+from app.pg_client import PostgresClient
 from app.models.invoice import (
     Invoice,
     InvoiceCreate,
@@ -22,7 +22,7 @@ from app.models.invoice import (
 class InvoiceRepository:
     """Repository para operações com faturas"""
 
-    def __init__(self, supabase: Client):
+    def __init__(self, supabase: PostgresClient):
         self.supabase = supabase
 
     async def create_invoice(self, data: InvoiceCreate) -> Invoice:
@@ -78,13 +78,7 @@ class InvoiceRepository:
     async def get_invoice_by_id(self, invoice_id: UUID) -> Optional[Invoice]:
         """Busca uma fatura por ID (com joins de project e client)"""
         result = self.supabase.table("invoices")\
-            .select("""
-                *,
-                projects (
-                    nome,
-                    leads (nome)
-                )
-            """)\
+            .select("*")\
             .eq("id", str(invoice_id))\
             .single()\
             .execute()
@@ -111,13 +105,7 @@ class InvoiceRepository:
     ) -> list[Invoice]:
         """Lista faturas com filtros opcionais"""
         query = self.supabase.table("invoices")\
-            .select("""
-                *,
-                projects (
-                    nome,
-                    leads (nome)
-                )
-            """)
+            .select("*")
 
         if project_id:
             query = query.eq("project_id", project_id)
@@ -300,13 +288,7 @@ class InvoiceRepository:
 
         # Buscar próximos vencimentos (próximos 30 dias)
         proximos = self.supabase.table("invoices")\
-            .select("""
-                *,
-                projects (
-                    nome,
-                    leads (nome)
-                )
-            """)\
+            .select("*")\
             .in_("status", [InvoiceStatus.PENDENTE.value, InvoiceStatus.AGUARDANDO_CONF.value])\
             .gte("data_vencimento", date.today().isoformat())\
             .order("data_vencimento")\

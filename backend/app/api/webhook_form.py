@@ -105,6 +105,18 @@ async def webhook_form(payload: FormLeadPayload, request: Request):
 
     logger.info(f"{'✅ QUALIFICADO' if qualificado else '❌ NÃO QUALIFICADO'}: cargo={payload.cargo}, faturamento=R${payload.faturamento_mensal:,.0f}")
 
+    # Telefone é único em leads: reenvio do formulário só registra a submission
+    existing_lead = await repository.get_by_telefone(tel)
+    if existing_lead:
+        logger.info(f"Lead já existe para {tel} ({existing_lead.id}) — registrando apenas a submission")
+        await salvar_submission(payload, tel, qualificado, existing_lead.id, request)
+        return {
+            "success": True,
+            "qualificado": qualificado,
+            "lead_id": existing_lead.id,
+            "lead_existente": True,
+        }
+
     if qualificado:
         lead = Lead(
             id=str(uuid.uuid4()),
@@ -131,7 +143,7 @@ async def webhook_form(payload: FormLeadPayload, request: Request):
             updated_at=datetime.now(),
         )
 
-        await repository.create(lead)
+        lead = await repository.create(lead)  # id real (SERIAL) vem do banco
         logger.info(f"Lead qualificado salvo no CRM: {lead.id}")
 
         # Salvar submission com lead_id
@@ -187,7 +199,7 @@ async def webhook_form(payload: FormLeadPayload, request: Request):
             updated_at=datetime.now(),
         )
 
-        await repository.create(lead)
+        lead = await repository.create(lead)  # id real (SERIAL) vem do banco
         logger.info(f"Lead não qualificado salvo: {lead.id} ({payload.nome})")
 
         # Salvar submission com lead_id

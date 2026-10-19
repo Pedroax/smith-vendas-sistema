@@ -1,83 +1,109 @@
 """
-Configuração e inicialização do cliente Supabase e SQLAlchemy
+Conexão com o PostgreSQL (Railway)
+
+- `get_supabase()` devolve um PostgresClient com a mesma API do supabase-py usada
+  nos repositories (o nome foi mantido para não mexer em todos os call sites).
+- `SessionLocal`/`get_db` continuam servindo os repositories que usam SQLAlchemy.
+- `init_db()` valida a conexão e aplica as migrations `migrations/railway_*.sql`.
 """
-from supabase import create_client, Client
+from pathlib import Path
+
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from app.config import settings
 from loguru import logger
 
+from app.config import settings
+from app.pg_client import PostgresClient
 
-# Cliente Supabase global
-supabase: Client = None
 
-# SQLAlchemy para conversas (acesso direto ao PostgreSQL)
-# Construir URL de conexão a partir das configurações
-from urllib.parse import quote_plus
+MIGRATIONS_DIR = Path(__file__).resolve().parent.parent / "migrations"
 
-db_password = quote_plus(settings.supabase_db_password)
-project_id = settings.supabase_url.replace('https://', '').replace('http://', '').split('.')[0]
 
-# Connection string para Supabase PostgreSQL - Direct Connection
-# Formato: postgresql://postgres:[PASSWORD]@db.[PROJECT_ID].supabase.co:5432/postgres
-DATABASE_URL = f"postgresql+psycopg2://postgres:{db_password}@db.{project_id}.supabase.co:5432/postgres"
+def _normalize_database_url(url: str) -> str:
+    """
+    Força o driver psycopg2 (o PostgresClient depende dele).
+    A Railway entrega postgresql:// e, a partir do SQLAlchemy 2.1,
+    esse esquema passou a usar o psycopg 3 por padrão.
+    """
+    for prefix in ("postgres://", "postgresql://"):
+        if url.startswith(prefix):
+            return "postgresql+psycopg2://" + url[len(prefix):]
+    return url
 
-# Engine SQLAlchemy
+
 engine = create_engine(
-    DATABASE_URL,
+    _normalize_database_url(settings.database_url),
     pool_pre_ping=True,
     pool_size=5,
     max_overflow=10,
-    connect_args={
-        "connect_timeout": 10,
-        "sslmode": "require"
-    }
+    connect_args={"connect_timeout": 10},
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
+_client: PostgresClient = None
 
-def init_supabase() -> Client:
+
+def get_supabase() -> PostgresClient:
+    """Retorna o cliente Postgres global (API compatível com supabase-py)"""
+    global _client
+    if _client is None:
+        _client = PostgresClient(engine)
+    return _client
+
+
+def run_migrations():
     """
-    Inicializa o cliente Supabase
-
-    Returns:
-        Cliente Supabase configurado
+    Aplica, em ordem, os arquivos migrations/railway_*.sql ainda não aplicados.
+    Cada arquivo roda numa transação e fica registrado em schema_migrations.
     """
-    global supabase
-
-    if supabase is not None:
-        return supabase
-
+    connection = engine.raw_connection()
     try:
-        # Criar cliente usando service_role key para acesso completo
-        supabase = create_client(
-            supabase_url=settings.supabase_url,
-            supabase_key=settings.supabase_service_key
+        cursor = connection.cursor()
+        cursor.execute(
+            "CREATE TABLE IF NOT EXISTS schema_migrations ("
+            " filename TEXT PRIMARY KEY,"
+            " applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW())"
         )
+        connection.commit()
 
-        logger.info(f"✅ Supabase conectado: {settings.supabase_url}")
+        cursor.execute("SELECT filename FROM schema_migrations")
+        applied = {row[0] for row in cursor.fetchall()}
 
-        return supabase
+        for path in sorted(MIGRATIONS_DIR.glob("railway_*.sql")):
+            if path.name in applied:
+                continue
 
-    except Exception as e:
-        logger.error(f"❌ Erro ao conectar ao Supabase: {e}")
-        raise
+            logger.info(f"🗄️  Aplicando migration {path.name}...")
+            try:
+                cursor.execute(path.read_text(encoding="utf-8"))
+                cursor.execute(
+                    "INSERT INTO schema_migrations (filename) VALUES (%s)", (path.name,)
+                )
+                connection.commit()
+                logger.success(f"✅ Migration {path.name} aplicada")
+            except Exception:
+                connection.rollback()
+                logger.error(f"❌ Falha ao aplicar migration {path.name}")
+                raise
+
+        cursor.execute(
+            "SELECT table_name FROM information_schema.tables "
+            "WHERE table_schema = 'public' ORDER BY table_name"
+        )
+        tables = [row[0] for row in cursor.fetchall()]
+        logger.info(f"🗄️  Tabelas no banco: {', '.join(tables)}")
+    finally:
+        connection.close()
 
 
-def get_supabase() -> Client:
-    """
-    Retorna o cliente Supabase (inicializa se necessário)
-
-    Returns:
-        Cliente Supabase
-    """
-    if supabase is None:
-        return init_supabase()
-
-    return supabase
+def init_db() -> PostgresClient:
+    """Valida a conexão, aplica migrations e devolve o cliente"""
+    run_migrations()
+    logger.info("✅ PostgreSQL conectado")
+    return get_supabase()
 
 
 def get_db():

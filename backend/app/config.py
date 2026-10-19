@@ -27,8 +27,8 @@ class Settings(BaseSettings):
     openai_temperature: float = Field(default=0.7, env="OPENAI_TEMPERATURE")
 
     # Evolution API (WhatsApp) - DEPRECATED
-    evolution_api_url: str = Field(..., env="EVOLUTION_API_URL")
-    evolution_api_key: str = Field(..., env="EVOLUTION_API_KEY")
+    evolution_api_url: str = Field(default="", env="EVOLUTION_API_URL")
+    evolution_api_key: str = Field(default="", env="EVOLUTION_API_KEY")
     evolution_instance_name: str = Field(default="smith", env="EVOLUTION_INSTANCE_NAME")
 
     # UAZAPI (WhatsApp) - NOVO
@@ -36,11 +36,8 @@ class Settings(BaseSettings):
     uazapi_instance_id: str = Field(default="smith", env="UAZAPI_INSTANCE_ID")
     uazapi_token: str = Field(..., env="UAZAPI_TOKEN")
 
-    # Supabase
-    supabase_url: str = Field(..., env="SUPABASE_URL")
-    supabase_service_key: str = Field(..., env="SUPABASE_SERVICE_KEY")
-    supabase_anon_key: Optional[str] = Field(default=None, env="SUPABASE_ANON_KEY")
-    supabase_db_password: str = Field(..., env="SUPABASE_DB_PASSWORD")
+    # PostgreSQL (Railway)
+    database_url: str = Field(..., env="DATABASE_URL")
 
     # Redis
     redis_url: str = Field(default="redis://localhost:6379", env="REDIS_URL")
@@ -116,7 +113,7 @@ class Settings(BaseSettings):
 
     @property
     def supabase(self):
-        """Retorna o cliente Supabase"""
+        """Retorna o cliente Postgres (API compatível com supabase-py)"""
         from app.database import get_supabase
         return get_supabase()
 
@@ -124,6 +121,7 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = False
+        extra = "ignore"
 
 
 # Instância global de configurações
@@ -141,18 +139,6 @@ def validate_settings():
 
     if not settings.openai_api_key or settings.openai_api_key == "sk-...":
         errors.append("⚠️  OPENAI_API_KEY não configurada (usada para transcrição de áudio Whisper)")
-
-    if not settings.evolution_api_url or settings.evolution_api_url == "https://...":
-        errors.append("⚠️  EVOLUTION_API_URL não configurada (usando valor mock)")
-
-    if not settings.evolution_api_key or settings.evolution_api_key == "...":
-        errors.append("⚠️  EVOLUTION_API_KEY não configurada (usando valor mock)")
-
-    if not settings.supabase_url or settings.supabase_url == "https://...supabase.co":
-        errors.append("⚠️  SUPABASE_URL não configurada (usando valor mock)")
-
-    if not settings.supabase_service_key or settings.supabase_service_key == "...":
-        errors.append("⚠️  SUPABASE_SERVICE_KEY não configurada (usando valor mock)")
 
     # JWT é menos crítico no modo teste
     # if not settings.jwt_secret_key or settings.jwt_secret_key == "seu-secret-key-super-seguro-aqui":

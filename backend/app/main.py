@@ -37,13 +37,12 @@ async def lifespan(app: FastAPI):
         logger.error(f"❌ Erro nas configurações: {e}")
         raise
 
-    # Inicializar Supabase
-    from app.database import init_supabase
+    # Inicializar PostgreSQL (aplica migrations pendentes)
+    from app.database import init_db
     try:
-        init_supabase()
-        logger.success("✅ Supabase conectado")
+        init_db()
     except Exception as e:
-        logger.error(f"❌ Erro ao conectar Supabase: {e}")
+        logger.error(f"❌ Erro ao inicializar PostgreSQL: {e}")
         # Não bloquear startup em modo desenvolvimento
         if not settings.debug:
             raise
@@ -205,7 +204,7 @@ async def websocket_endpoint(websocket: WebSocket):
         manager.disconnect(websocket)
 
 
-# Seed mock data desabilitado - usando dados reais do Supabase
+# Seed mock data desabilitado - usando dados reais do PostgreSQL
 # @app.on_event("startup")
 # async def startup_event():
 #     """Popula banco com dados de exemplo"""

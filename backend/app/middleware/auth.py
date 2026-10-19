@@ -7,13 +7,14 @@ from typing import Optional
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-import os
 
-# Configuração JWT
-JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
-JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
-JWT_EXPIRATION_HOURS = int(os.getenv("JWT_EXPIRATION_HOURS", "24"))
-JWT_REFRESH_EXPIRATION_DAYS = int(os.getenv("JWT_REFRESH_EXPIRATION_DAYS", "30"))
+from app.config import settings
+
+# Configuração JWT (mesma fonte usada pelo portal para verificar os tokens)
+JWT_SECRET_KEY = settings.jwt_secret_key
+JWT_ALGORITHM = settings.jwt_algorithm
+JWT_EXPIRATION_HOURS = settings.jwt_expiration_hours
+JWT_REFRESH_EXPIRATION_DAYS = 30
 
 security = HTTPBearer()
 

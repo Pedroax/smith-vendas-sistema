@@ -32,7 +32,7 @@ class TaskRepository:
 
         if data.project_id:
             try:
-                project = self.supabase.table("portal_projects").select("nome").eq("id", data.project_id).execute()
+                project = self.supabase.table("client_projects").select("nome").eq("id", data.project_id).execute()
                 if project.data:
                     project_nome = project.data[0]["nome"]
             except Exception as e:
@@ -134,7 +134,7 @@ class TaskRepository:
             update_data["project_id"] = data.project_id if data.project_id else None
             if data.project_id:
                 try:
-                    project = self.supabase.table("portal_projects").select("nome").eq("id", data.project_id).execute()
+                    project = self.supabase.table("client_projects").select("nome").eq("id", data.project_id).execute()
                     if project.data:
                         update_data["project_nome"] = project.data[0]["nome"]
                 except Exception:

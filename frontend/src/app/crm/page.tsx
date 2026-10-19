@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { KanbanBoard } from '@/components/kanban/KanbanBoard';
+import { LeadModal } from '@/components/modals/LeadModal';
 import { useLeadsStore } from '@/store/useLeadsStore';
 import { TrendingUp, DollarSign, Users, Target, Plus, Search, Filter, Loader2 } from 'lucide-react';
 
 export default function CRMPage() {
   const { leads, isLoading, error, fetchLeads, fetchStats, clearError } = useLeadsStore();
+  const [isLeadModalOpen, setIsLeadModalOpen] = useState(false);
 
   // Buscar leads ao montar componente
   useEffect(() => {
@@ -53,7 +55,10 @@ export default function CRMPage() {
               </button>
 
               {/* Add Lead */}
-              <button className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:shadow-lg transition-all">
+              <button
+                onClick={() => setIsLeadModalOpen(true)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:shadow-lg transition-all"
+              >
                 <Plus className="w-5 h-5" />
                 <span className="font-medium">Novo Lead</span>
               </button>
@@ -164,6 +169,8 @@ export default function CRMPage() {
           <KanbanBoard />
         </div>
       )}
+
+      <LeadModal isOpen={isLeadModalOpen} onClose={() => setIsLeadModalOpen(false)} />
     </div>
   );
 }

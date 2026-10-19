@@ -39,6 +39,18 @@ async def create_lead(lead_data: LeadCreate):
         Lead criado com ID
     """
     try:
+        # Mesmo formato do WhatsApp: só dígitos, com DDI 55 quando vier só DDD + número
+        telefone = re.sub(r"\D", "", lead_data.telefone)
+        if len(telefone) in (10, 11):
+            telefone = "55" + telefone
+
+        existing_lead = await repository.get_by_telefone(telefone)
+        if existing_lead:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Já existe um lead com esse telefone: {existing_lead.nome}"
+            )
+
         # Gerar ID único
         lead_id = str(uuid.uuid4())
 
@@ -46,7 +58,7 @@ async def create_lead(lead_data: LeadCreate):
         lead = Lead(
             id=lead_id,
             nome=lead_data.nome,
-            telefone=re.sub(r"\D", "", lead_data.telefone),  # Mesmo formato do WhatsApp
+            telefone=telefone,
             empresa=lead_data.empresa,
             email=lead_data.email,
             origem=lead_data.origem,
@@ -80,6 +92,8 @@ async def create_lead(lead_data: LeadCreate):
             message="Lead criado com sucesso"
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Erro ao criar lead: {e}")
         raise HTTPException(status_code=500, detail=str(e))

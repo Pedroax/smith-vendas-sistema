@@ -13,7 +13,8 @@ interface LeadModalProps {
 }
 
 export function LeadModal({ isOpen, onClose, lead }: LeadModalProps) {
-  const { createLead, updateLead, isLoading } = useLeadsStore();
+  const { createLead, updateLead, isLoading, clearError } = useLeadsStore();
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     nome: '',
     telefone: '',
@@ -46,6 +47,7 @@ export function LeadModal({ isOpen, onClose, lead }: LeadModalProps) {
       });
     }
     setErrors({});
+    setSubmitError(null);
   }, [lead, isOpen]);
 
   const validate = () => {
@@ -57,8 +59,8 @@ export function LeadModal({ isOpen, onClose, lead }: LeadModalProps) {
 
     if (!formData.telefone.trim()) {
       newErrors.telefone = 'Telefone é obrigatório';
-    } else if (!/^\+?\d{10,15}$/.test(formData.telefone.replace(/\s/g, ''))) {
-      newErrors.telefone = 'Telefone inválido (ex: +5511999999999)';
+    } else if (!/^\d{10,15}$/.test(formData.telefone.replace(/\D/g, ''))) {
+      newErrors.telefone = 'Telefone inválido (ex: (61) 99999-9999)';
     }
 
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
@@ -94,7 +96,13 @@ export function LeadModal({ isOpen, onClose, lead }: LeadModalProps) {
           notas: formData.notas || undefined,
         };
 
-        await createLead(newLeadData);
+        const created = await createLead(newLeadData);
+        if (!created) {
+          // Mantém o modal aberto e mostra o erro aqui, não no topo da página
+          setSubmitError(useLeadsStore.getState().error || 'Erro ao criar lead');
+          clearError();
+          return;
+        }
       }
 
       onClose();
@@ -123,6 +131,12 @@ export function LeadModal({ isOpen, onClose, lead }: LeadModalProps) {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+          {submitError && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+              {submitError}
+            </div>
+          )}
+
           {/* Nome */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -155,7 +169,7 @@ export function LeadModal({ isOpen, onClose, lead }: LeadModalProps) {
                 className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all ${
                   errors.telefone ? 'border-red-500' : 'border-gray-300'
                 }`}
-                placeholder="+5511999999999"
+                placeholder="(61) 99999-9999"
                 disabled={!!lead} // Não permitir editar telefone
               />
               {errors.telefone && (

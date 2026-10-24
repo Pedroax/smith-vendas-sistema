@@ -121,14 +121,21 @@ async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ) -> dict:
     """
-    Dependency para rotas autenticadas — valida token (qualquer role)
+    Dependency para rotas do sistema interno — aceita usuários admin ou marketing.
+    Tokens do portal do cliente (sem role) são recusados.
     """
     token = credentials.credentials
     payload = verify_token(token, "access")
 
+    if payload.get("role") not in ("admin", "marketing"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso restrito ao sistema interno"
+        )
+
     return {
         "id": payload.get("sub"),
-        "role": payload.get("role", "marketing"),
+        "role": payload["role"],
         "nome": payload.get("nome", ""),
         "token": token,
     }

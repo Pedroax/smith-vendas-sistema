@@ -9,6 +9,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { apiClient } from '@/lib/api';
 
 import { API_URL } from '@/lib/api-config';
+import { adminFetch } from '@/lib/auth';
 
 interface Lead {
   id: string;
@@ -85,7 +86,7 @@ export default function ConversasPage() {
   const fetchInteractions = async (leadId: string) => {
     setLoadingInteractions(true);
     try {
-      const res = await fetch(`${API_URL}/api/interactions/lead/${leadId}`);
+      const res = await adminFetch(`${API_URL}/api/interactions/lead/${leadId}`);
       if (res.ok) {
         const data = await res.json();
         setInteractions(data);
@@ -104,7 +105,7 @@ export default function ConversasPage() {
 
     setSubmitting(true);
     try {
-      const res = await fetch(`${API_URL}/api/interactions`, {
+      const res = await adminFetch(`${API_URL}/api/interactions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

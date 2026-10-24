@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Plus, FileText, Download, Check, X, AlertCircle, DollarSign, TrendingUp, Clock, CheckCircle } from 'lucide-react';
 import { API_URL } from '@/lib/api-config';
+import { adminFetch } from '@/lib/auth';
 import { Invoice, InvoiceStats, InvoiceStatus, STATUS_LABELS, STATUS_COLORS, METODO_LABELS, MetodoPagamento } from '@/types/invoice';
 import { useToast } from '@/contexts/ToastContext';
 
@@ -25,7 +26,7 @@ export default function FinanceiroPage() {
 
   const fetchProjects = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/projects/`);
+      const res = await adminFetch(`${API_URL}/api/projects/`);
       if (res.ok) {
         const data = await res.json();
         setProjects(data);
@@ -39,8 +40,8 @@ export default function FinanceiroPage() {
     try {
       setLoading(true);
       const [statsRes, invoicesRes] = await Promise.all([
-        fetch(`${API_URL}/api/invoices/stats`),
-        fetch(`${API_URL}/api/invoices${selectedStatus !== 'all' ? `?status=${selectedStatus}` : ''}`),
+        adminFetch(`${API_URL}/api/invoices/stats`),
+        adminFetch(`${API_URL}/api/invoices${selectedStatus !== 'all' ? `?status=${selectedStatus}` : ''}`),
       ]);
 
       if (statsRes.ok) setStats(await statsRes.json());
@@ -65,7 +66,7 @@ export default function FinanceiroPage() {
     if (!confirm('Confirmar pagamento desta fatura?')) return;
 
     try {
-      const res = await fetch(`${API_URL}/api/invoices/${invoiceId}/confirmar-pagamento`, {
+      const res = await adminFetch(`${API_URL}/api/invoices/${invoiceId}/confirmar-pagamento`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -310,7 +311,7 @@ export default function FinanceiroPage() {
                 };
 
                 try {
-                  const res = await fetch(`${API_URL}/api/invoices/`, {
+                  const res = await adminFetch(`${API_URL}/api/invoices/`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload),

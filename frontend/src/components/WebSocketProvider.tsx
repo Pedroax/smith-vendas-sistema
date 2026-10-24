@@ -3,6 +3,7 @@
 import { useCallback, useRef } from 'react';
 import { useWebSocket, WebSocketMessage } from '@/hooks/useWebSocket';
 import { useLeadsStore } from '@/store/useLeadsStore';
+import { adminAuth } from '@/lib/auth';
 import { Lead } from '@/types/lead';
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000/ws';
@@ -50,8 +51,11 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     console.error('[WebSocket] Error:', error);
   }, []);
 
+  // O backend exige o token de login no handshake (?token=)
+  const token = typeof window !== 'undefined' ? adminAuth.getAccessToken() : null;
+
   const { status, reconnectCount } = useWebSocket({
-    url: WS_URL,
+    url: token ? `${WS_URL}?token=${encodeURIComponent(token)}` : WS_URL,
     onMessage: handleMessage,
     onConnect: handleConnect,
     onDisconnect: handleDisconnect,

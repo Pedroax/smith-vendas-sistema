@@ -7,6 +7,7 @@ import {
   AlertCircle, XCircle, ChevronLeft, Bell, BellOff
 } from 'lucide-react';
 import { API_URL } from '@/lib/api-config';
+import { adminFetch } from '@/lib/auth';
 import { useToast } from '@/contexts/ToastContext';
 
 interface Milestone {
@@ -68,7 +69,7 @@ export default function ProjectMilestonesPage() {
   const fetchMilestones = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_URL}/api/milestones/project/${projectId}`);
+      const res = await adminFetch(`${API_URL}/api/milestones/project/${projectId}`);
       if (res.ok) {
         const data = await res.json();
         setMilestones(data);
@@ -104,7 +105,7 @@ export default function ProjectMilestonesPage() {
         ? `${API_URL}/api/milestones/${editingMilestone.id}`
         : `${API_URL}/api/milestones/`;
 
-      const res = await fetch(url, {
+      const res = await adminFetch(url, {
         method: editingMilestone ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -130,7 +131,7 @@ export default function ProjectMilestonesPage() {
     if (!confirm('Tem certeza que deseja deletar este marco?')) return;
 
     try {
-      const res = await fetch(`${API_URL}/api/milestones/${milestoneId}`, {
+      const res = await adminFetch(`${API_URL}/api/milestones/${milestoneId}`, {
         method: 'DELETE'
       });
 

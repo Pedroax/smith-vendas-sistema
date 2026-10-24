@@ -7,6 +7,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { Plus, Trash2, X, Calendar, User, FolderOpen, Loader2, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/contexts/ToastContext';
 import { API_URL } from '@/lib/api-config';
+import { adminFetch } from '@/lib/auth';
 
 // --- Types ---
 interface Task {
@@ -289,9 +290,9 @@ export default function TarefasPage() {
   const fetchAll = async () => {
     try {
       const [tasksRes, leadsRes, projectsRes] = await Promise.all([
-        fetch(`${API_URL}/api/tasks`),
-        fetch(`${API_URL}/api/leads`),
-        fetch(`${API_URL}/api/projects`),
+        adminFetch(`${API_URL}/api/tasks`),
+        adminFetch(`${API_URL}/api/leads`),
+        adminFetch(`${API_URL}/api/projects`),
       ]);
       if (tasksRes.ok) setTasks(await tasksRes.json());
       if (leadsRes.ok) setLeads(await leadsRes.json());
@@ -377,7 +378,7 @@ export default function TarefasPage() {
       const url = editingTask ? `${API_URL}/api/tasks/${editingTask.id}` : `${API_URL}/api/tasks`;
       const method = editingTask ? 'PUT' : 'POST';
 
-      const res = await fetch(url, {
+      const res = await adminFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -402,7 +403,7 @@ export default function TarefasPage() {
   const handleDelete = async (taskId: string) => {
     if (!confirm('Deletar esta tarefa?')) return;
     try {
-      const res = await fetch(`${API_URL}/api/tasks/${taskId}`, { method: 'DELETE' });
+      const res = await adminFetch(`${API_URL}/api/tasks/${taskId}`, { method: 'DELETE' });
       if (res.ok) {
         showToast('Tarefa deletada', 'success');
         setTasks((prev) => prev.filter((t) => t.id !== taskId));
@@ -419,7 +420,7 @@ export default function TarefasPage() {
       prev.map((t) => (t.id === taskId ? { ...t, status: newStatus as Task['status'] } : t))
     );
     try {
-      await fetch(`${API_URL}/api/tasks/${taskId}`, {
+      await adminFetch(`${API_URL}/api/tasks/${taskId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),

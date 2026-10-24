@@ -5,6 +5,7 @@
 import { Lead, LeadStatus, LeadOrigin, LeadTemperature } from '@/types/lead';
 import { APIError, handleAPIError } from './errors';
 import { API_URL as API_BASE_URL } from './api-config';
+import { adminFetch } from './auth';
 
 export interface CreateLeadData {
   nome: string;
@@ -59,7 +60,8 @@ class APIClient {
     const url = `${this.baseURL}${endpoint}`;
 
     try {
-      const response = await fetch(url, {
+      // adminFetch envia o token de login e renova/redireciona em caso de 401
+      const response = await adminFetch(url, {
         ...options,
         headers: {
           'Content-Type': 'application/json',

@@ -5,6 +5,7 @@ import { Search, Loader2, Users, Calendar, MessageSquare, Briefcase, X } from 'l
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/contexts/ToastContext';
 import { API_URL } from '@/lib/api-config';
+import { adminFetch } from '@/lib/auth';
 
 interface SearchResult {
   id: string;
@@ -104,7 +105,7 @@ export default function GlobalSearch() {
   const performSearch = async (searchQuery: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/search?q=${encodeURIComponent(searchQuery)}`);
+      const res = await adminFetch(`${API_URL}/api/search?q=${encodeURIComponent(searchQuery)}`);
       if (res.ok) {
         const data = await res.json();
         setResults(data);

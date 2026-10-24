@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Zap, MessageCircle, Calendar, CheckCircle2, AlertCircle, XCircle, ExternalLink, RefreshCw, Loader2 } from 'lucide-react';
 
 import { API_URL } from '@/lib/api-config';
+import { adminFetch } from '@/lib/auth';
 
 interface WebhookStatus {
   webhook: string;
@@ -19,7 +20,7 @@ export default function IntegracosPage() {
   const fetchStatus = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/webhook/whatsapp/status`);
+      const res = await adminFetch(`${API_URL}/webhook/whatsapp/status`);
       if (res.ok) {
         setWebhookStatus(await res.json());
       }

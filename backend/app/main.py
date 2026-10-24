@@ -146,27 +146,33 @@ async def health_check():
 # ROTAS DA API
 # ========================================
 
+from fastapi import Depends, HTTPException
 from app.api import leads, webhook, analytics, projects, webhook_facebook, test_qualification, webhook_evolution, webhook_uazapi, client_portal, interactions, appointments, notifications, search, tasks, admin_auth, invoices, milestones, webhook_form
+from app.middleware.auth import get_current_user, verify_token
+
+# Rotas do sistema interno exigem login (admin ou marketing).
+# Webhooks, login e portal do cliente (que tem autenticação própria) ficam fora.
+internal = [Depends(get_current_user)]
 
 # Incluir routers
-app.include_router(leads.router, prefix="/api/leads", tags=["Leads"])
+app.include_router(leads.router, prefix="/api/leads", tags=["Leads"], dependencies=internal)
 app.include_router(webhook.router, prefix="/webhook", tags=["Webhook"])
 app.include_router(webhook_facebook.router, prefix="/webhook", tags=["Facebook"])
 app.include_router(webhook_evolution.router, tags=["Evolution"])  # Webhook WhatsApp (DEPRECATED)
 app.include_router(webhook_uazapi.router, prefix="/webhook", tags=["UAZAPI"])  # Webhook WhatsApp (NOVO)
 app.include_router(webhook_form.router, prefix="/webhook", tags=["Form LP"])  # Formulário Landing Page
-app.include_router(test_qualification.router, prefix="/api", tags=["Testing"])
-app.include_router(analytics.router, prefix="/api", tags=["Analytics"])
-app.include_router(projects.router, prefix="/api/projects", tags=["Projects"])
+app.include_router(test_qualification.router, prefix="/api", tags=["Testing"], dependencies=internal)
+app.include_router(analytics.router, prefix="/api", tags=["Analytics"], dependencies=internal)
+app.include_router(projects.router, prefix="/api/projects", tags=["Projects"], dependencies=internal)
 app.include_router(client_portal.router, tags=["Portal do Cliente"])
-app.include_router(interactions.router, tags=["Interactions"])
-app.include_router(appointments.router, tags=["Appointments"])
-app.include_router(notifications.router, tags=["Notifications"])
-app.include_router(search.router, tags=["Search"])
-app.include_router(tasks.router, tags=["Tasks"])
+app.include_router(interactions.router, tags=["Interactions"], dependencies=internal)
+app.include_router(appointments.router, tags=["Appointments"], dependencies=internal)
+app.include_router(notifications.router, tags=["Notifications"], dependencies=internal)
+app.include_router(search.router, tags=["Search"], dependencies=internal)
+app.include_router(tasks.router, tags=["Tasks"], dependencies=internal)
 app.include_router(admin_auth.router, tags=["Admin Auth"])
-app.include_router(invoices.router, tags=["Invoices"])
-app.include_router(milestones.router, tags=["Milestones"])
+app.include_router(invoices.router, tags=["Invoices"], dependencies=internal)
+app.include_router(milestones.router, tags=["Milestones"], dependencies=internal)
 
 # Teste direto
 @app.get("/api/test-analytics")
@@ -182,8 +188,16 @@ async def test_analytics():
 from app.websocket import manager
 
 @app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    """Endpoint WebSocket para atualizações em tempo real"""
+async def websocket_endpoint(websocket: WebSocket, token: str = ""):
+    """Endpoint WebSocket para atualizações em tempo real (token de login via ?token=)"""
+    try:
+        payload = verify_token(token, "access")
+    except HTTPException:
+        payload = {}
+    if payload.get("role") not in ("admin", "marketing"):
+        await websocket.close(code=1008)
+        return
+
     await manager.connect(websocket)
     try:
         # Manter conexão aberta e aguardar mensagens

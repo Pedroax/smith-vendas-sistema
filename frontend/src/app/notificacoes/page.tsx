@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/contexts/ToastContext';
 
 import { API_URL } from '@/lib/api-config';
+import { adminFetch } from '@/lib/auth';
 
 interface Notification {
   id: string;
@@ -55,7 +56,7 @@ export default function NotificacoesPage() {
     setLoading(true);
     try {
       const unreadOnly = filter === 'unread';
-      const res = await fetch(`${API_URL}/api/notifications?unread_only=${unreadOnly}&limit=100`);
+      const res = await adminFetch(`${API_URL}/api/notifications?unread_only=${unreadOnly}&limit=100`);
       if (res.ok) {
         const data = await res.json();
         setNotifications(data);
@@ -70,7 +71,7 @@ export default function NotificacoesPage() {
 
   const handleMarkAsRead = async (notificationId: string) => {
     try {
-      const res = await fetch(`${API_URL}/api/notifications/${notificationId}/read`, {
+      const res = await adminFetch(`${API_URL}/api/notifications/${notificationId}/read`, {
         method: 'POST',
       });
 
@@ -88,7 +89,7 @@ export default function NotificacoesPage() {
 
   const handleMarkAllAsRead = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/notifications/mark-all-read`, {
+      const res = await adminFetch(`${API_URL}/api/notifications/mark-all-read`, {
         method: 'POST',
       });
 
@@ -106,7 +107,7 @@ export default function NotificacoesPage() {
     if (!confirm('Deseja realmente deletar esta notificação?')) return;
 
     try {
-      const res = await fetch(`${API_URL}/api/notifications/${notificationId}`, {
+      const res = await adminFetch(`${API_URL}/api/notifications/${notificationId}`, {
         method: 'DELETE',
       });
 

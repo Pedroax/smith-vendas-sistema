@@ -5,6 +5,7 @@ import { Bell, X, Check, CheckCheck, Trash2, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/contexts/ToastContext';
 import { API_URL } from '@/lib/api-config';
+import { adminFetch } from '@/lib/auth';
 
 interface Notification {
   id: string;
@@ -75,7 +76,7 @@ export default function NotificationBell() {
   const fetchNotifications = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/notifications?limit=20`);
+      const res = await adminFetch(`${API_URL}/api/notifications?limit=20`);
       if (res.ok) {
         const data = await res.json();
         setNotifications(data);
@@ -89,7 +90,7 @@ export default function NotificationBell() {
 
   const fetchUnreadCount = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/notifications/count/unread`);
+      const res = await adminFetch(`${API_URL}/api/notifications/count/unread`);
       if (res.ok) {
         const data = await res.json();
         setUnreadCount(data.count);
@@ -101,7 +102,7 @@ export default function NotificationBell() {
 
   const handleMarkAsRead = async (notificationId: string) => {
     try {
-      const res = await fetch(`${API_URL}/api/notifications/${notificationId}/read`, {
+      const res = await adminFetch(`${API_URL}/api/notifications/${notificationId}/read`, {
         method: 'POST',
       });
 
@@ -118,7 +119,7 @@ export default function NotificationBell() {
 
   const handleMarkAllAsRead = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/notifications/mark-all-read`, {
+      const res = await adminFetch(`${API_URL}/api/notifications/mark-all-read`, {
         method: 'POST',
       });
 
@@ -135,7 +136,7 @@ export default function NotificationBell() {
 
   const handleDelete = async (notificationId: string) => {
     try {
-      const res = await fetch(`${API_URL}/api/notifications/${notificationId}`, {
+      const res = await adminFetch(`${API_URL}/api/notifications/${notificationId}`, {
         method: 'DELETE',
       });
 

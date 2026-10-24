@@ -16,6 +16,7 @@ import {
 import { Plus, Calendar, DollarSign, User, AlertCircle } from 'lucide-react';
 
 import { API_URL } from '@/lib/api-config';
+import { adminFetch } from '@/lib/auth';
 
 // Types
 type ProjectStatus = 'backlog' | 'em_andamento' | 'concluido';
@@ -230,7 +231,7 @@ export default function PipelinePage() {
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch(`${API_URL}/api/projects/`);
+      const response = await adminFetch(`${API_URL}/api/projects/`);
 
       if (!response.ok) {
         throw new Error('Erro ao buscar projetos');
@@ -285,7 +286,7 @@ export default function PipelinePage() {
 
     // Update backend
     try {
-      const response = await fetch(`${API_URL}/api/projects/${projectId}`, {
+      const response = await adminFetch(`${API_URL}/api/projects/${projectId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

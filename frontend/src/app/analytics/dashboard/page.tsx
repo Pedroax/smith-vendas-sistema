@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 
 import { API_URL } from '@/lib/api-config';
+import { adminFetch } from '@/lib/auth';
 
 interface DashboardMetrics {
   resumo: {
@@ -48,7 +49,7 @@ export default function AnalyticsDashboard() {
         setError(null);
 
         console.log('Buscando métricas...', `${API_URL}/api/analytics/dashboard?periodo_dias=${periodo}`);
-        const response = await fetch(`${API_URL}/api/analytics/dashboard?periodo_dias=${periodo}`);
+        const response = await adminFetch(`${API_URL}/api/analytics/dashboard?periodo_dias=${periodo}`);
 
         if (!response.ok) {
           throw new Error('Erro ao buscar métricas');

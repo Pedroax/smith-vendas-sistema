@@ -16,6 +16,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { apiClient } from '@/lib/api';
 
 import { API_URL } from '@/lib/api-config';
+import { adminFetch } from '@/lib/auth';
 
 interface Lead {
   id: string;
@@ -108,7 +109,7 @@ export default function AgendamentosPage() {
       const monthStart = startOfMonth(currentMonth);
       const monthEnd = endOfMonth(currentMonth);
 
-      const res = await fetch(
+      const res = await adminFetch(
         `${API_URL}/api/appointments?start_date=${monthStart.toISOString()}&end_date=${monthEnd.toISOString()}`
       );
 
@@ -139,7 +140,7 @@ export default function AgendamentosPage() {
 
       const method = editingAppointment ? 'PUT' : 'POST';
 
-      const res = await fetch(url, {
+      const res = await adminFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -172,7 +173,7 @@ export default function AgendamentosPage() {
     if (!confirm('Deseja realmente deletar este agendamento?')) return;
 
     try {
-      const res = await fetch(`${API_URL}/api/appointments/${appointmentId}`, {
+      const res = await adminFetch(`${API_URL}/api/appointments/${appointmentId}`, {
         method: 'DELETE',
       });
 
@@ -190,7 +191,7 @@ export default function AgendamentosPage() {
 
   const handleMarkComplete = async (appointmentId: string) => {
     try {
-      const res = await fetch(`${API_URL}/api/appointments/${appointmentId}/complete`, {
+      const res = await adminFetch(`${API_URL}/api/appointments/${appointmentId}/complete`, {
         method: 'POST',
       });
 
